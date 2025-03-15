@@ -71,7 +71,12 @@ if receipts:
         )
 
         with st.expander("View & Edit Receipt"):
-            st.image(receipt.image_path, caption="Receipt Image", use_container_width=True)
+            print(receipt.__dict__)
+            columns = st.columns(len(receipt.image_paths))
+            for i, img_path in enumerate(receipt.image_paths):
+                with columns[i]:
+                    st.image(img_path, caption="Receipt Image", use_container_width=True)
+
 
             # Editable fields
             receipt_number = st.text_input("Receipt Number", value=receipt.receipt_number, key=f"receipt_number_{receipt.id}")
@@ -94,7 +99,7 @@ if receipts:
                     company_name=company_name,
                     description=description,
                     is_credit=is_credit,
-                    image_path=receipt.image_path,
+                    image_paths=receipt.image_paths,
                 )
                 receipt_repo.update_receipt(updated_receipt.dict())
                 st.success("Changes saved successfully!")
@@ -116,8 +121,11 @@ if receipts:
 
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             for receipt in receipts:
-                if os.path.exists(receipt.image_path):
-                    zip_file.write(receipt.image_path, os.path.basename(receipt.image_path))
+                for i, img_path in enumerate(receipt.image_paths):
+                    if os.path.exists(img_path):
+                        zip_file.write(img_path, os.path.basename(img_path))
+                    else:
+                        st.warning(f"Image not found: {img_path}")
 
         zip_buffer.seek(0)
 

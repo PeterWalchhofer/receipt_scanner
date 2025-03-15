@@ -1,5 +1,7 @@
-from typing import Optional
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
+
 
 class Receipt(BaseModel):
     id: Optional[int] = Field(None, description="Receipt ID")
@@ -11,4 +13,4 @@ class Receipt(BaseModel):
     company_name: Optional[str] = Field(None, description="Name of the issuing company")
     description: Optional[str] = Field(None, description="Description of purchased items or services")
     is_credit: Optional[bool] = Field(None, description="Indicates if it's a credit note")
-    image_path: Optional[str] = Field(None, description="Path to the receipt image")
+    image_paths: List[str] = Field(None, description="Path to the receipt image")
