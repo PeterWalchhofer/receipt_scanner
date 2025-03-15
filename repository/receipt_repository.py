@@ -1,13 +1,15 @@
 from sqlalchemy.orm import Session
 from models.receipt import Receipt
+from sqlalchemy import JSON
+
 from sqlalchemy import Column, Integer, String, Float, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 # Define the Receipt table with SQLAlchemy
+
 class ReceiptDB(Base):
     __tablename__ = "receipts"
-    
     id = Column(Integer, primary_key=True, index=True)
     receipt_number = Column(String, index=True)
     date = Column(String)
@@ -17,7 +19,7 @@ class ReceiptDB(Base):
     company_name = Column(String)
     description = Column(String)
     is_credit = Column(Boolean, default=False)
-    image_path = Column(String)
+    image_paths = Column(JSON)  # Store multiple image paths
 
 
 # Repository Class
@@ -30,7 +32,9 @@ class ReceiptRepository:
 
     def create_receipt(self, receipt_data: dict):
         self.init_db()
+        print("before", receipt_data.get("image_paths"))
         db_receipt = ReceiptDB(**receipt_data)
+        print("after", db_receipt.image_paths)
         self.db.add(db_receipt)
         self.db.commit()
         self.db.refresh(db_receipt)
