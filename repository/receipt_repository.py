@@ -77,6 +77,16 @@ class ReceiptRepository:
                 setattr(receipt, key, value)
             session.commit()
 
+    def delete_receipt(self, receipt_id: int) -> None:
+        with SessionLocal() as session:
+            receipt = (
+                session.query(ReceiptDB).filter(ReceiptDB.id == receipt_id).first()
+            )
+            if not receipt:
+                return None
+            session.delete(receipt)
+            session.commit()
+
     def get_all_receipts(self):
         with SessionLocal() as session:
             return session.query(ReceiptDB).order_by(ReceiptDB.created_on.desc()).all()

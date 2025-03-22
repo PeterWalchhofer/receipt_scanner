@@ -13,7 +13,13 @@ from repository.receipt_repository import ReceiptDB, ReceiptRepository
 
 receipt_repo = ReceiptRepository()
 
-
+@st.dialog("Delete?")
+def delete_dialog():
+    st.markdown("Are you sure you want to delete this receipt?")
+    if st.button("Yes, delete"):
+        receipt_repo.delete_receipt(receipt_id)
+        st.success("Receipt deleted successfully!")
+        st.rerun()
 def init_session_state():
     default_values = {
         "expanded": {},
@@ -114,11 +120,15 @@ if receipts:
         with col4:
             st.markdown(f"{receipt.company_name}")
         with col5:
-            if st.button(f"{arrow}", key=f"btn_{receipt_id}", type="tertiary"):
-                st.session_state.expanded[
-                    f"show_receipt_{receipt_id}"
-                ] = not is_expanded
-                st.rerun()
+            btn_col1, btn_col2 = st.columns(2)
+            with btn_col1:
+                if st.button(f"{arrow}", key=f"btn_{receipt_id}", type="tertiary"):
+                    st.session_state.expanded[f"show_receipt_{receipt_id}"] = not is_expanded
+                    st.rerun()
+            with btn_col2:
+                if st.button("🗑️", key=f"delete_{receipt_id}", type="tertiary"):
+                    delete_dialog()
+
 
         if is_expanded:
             col_1, col_2 = st.columns(2)
