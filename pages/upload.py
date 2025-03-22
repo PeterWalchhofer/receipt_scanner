@@ -1,13 +1,16 @@
+import json
 import os
 import random
 from datetime import datetime
+from pathlib import Path
 
 import streamlit as st
-from PIL import Image
+from streamlit_pdf_viewer import pdf_viewer
 
-from db.database import get_db
+from components.input import get_receipt_inputs
 from models.receipt import Receipt
-from repository.receipt_repository import ReceiptRepository
+from receipt_parser.llm import get_prompt, query_openai
+from repository.receipt_repository import ReceiptDB, ReceiptRepository
 
 
 # Initialize session state for extracted data
@@ -18,8 +21,9 @@ def init_session_state():
         "receipt_number": "",
         "sum_gross": "",
         "sum_net": "",
-        "image_paths": [],
-        "uploader_key": 0
+        "file_paths": [],
+        "uploader_key": 0,
+        "expanded": {},
     }
     for key, value in default_values.items():
         if key not in st.session_state:
@@ -30,7 +34,7 @@ init_session_state()
 
 
 # Dummy Machine Learning Function (as before)
-def extract_data(image):
+def extract_data_mock(file_paths):
     print("extracted")
     return {
         "receipt_number": "ABC123",
@@ -44,9 +48,13 @@ def extract_data(image):
     }
 
 
-# Initialize the database connection
-db = next(get_db())
-receipt_repo = ReceiptRepository(db)
+def extract_data(file_paths):
+    response = query_openai(get_prompt(file_paths))
+    json_dict = json.loads(response)
+    return json_dict
+
+
+receipt_repo = ReceiptRepository()
 
 # Directory for saving images
 UPLOAD_FOLDER = "saved_images"
@@ -58,76 +66,79 @@ st.title("Receipt Information Extraction App")
 st.write("Upload a receipt image or capture one with your smartphone.")
 
 uploaded_files = st.file_uploader(
-    "Choose a receipt image", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key=f"uploader_{st.session_state.uploader_key}"
+    "Choose a receipt image",
+    type=["jpg", "jpeg", "png", ".HEIC", "pdf"],
+    accept_multiple_files=True,
+    key=f"uploader_{st.session_state.uploader_key}",
 )
 
 if uploaded_files:
-    # next step button
-    if st.button("Confirm" if not st.session_state.image_paths else "Update", key="confirm"):
-        st.session_state.image_paths = []
+    if st.button(
+        "Confirm" if not st.session_state.file_paths else "Update", key="confirm"
+    ):
+        st.session_state.file_paths = []
         for uploaded_file in uploaded_files:
-            img = Image.open(uploaded_file)
+            print("uf", uploaded_file)
             img_name = datetime.now().strftime("%Y%m%d-%H%M%S")
+            suffix = Path(uploaded_file.name).suffix
             image_path = os.path.join(
-                UPLOAD_FOLDER, f"{img_name}_{random.random() * 20}.png"
+                UPLOAD_FOLDER, f"{img_name}_{random.random() * 20}{suffix}"
             )
-            img.save(image_path)
-            st.session_state.image_paths.append(image_path)
+            with open(image_path, "wb") as f:
+                f.write(uploaded_file.read())
 
-if st.session_state.image_paths:
-    st.subheader("Uploaded Receipt Images")
-    columns = st.columns(len(st.session_state.image_paths))
-    for i, img_path in enumerate(st.session_state.image_paths):
-        if os.path.exists(img_path):
-            with columns[i]:
-                img = Image.open(img_path)
-                st.image(img, caption=f"Receipt Image {i}")
+            st.session_state.file_paths.append(image_path)
 
-if st.session_state.image_paths and st.button("Extract Receipt Data"):
-    extracted_data = extract_data(st.session_state.image_paths)
+
+col_1, col_2 = st.columns(2)
+with col_1:
+    if st.session_state.file_paths:
+        st.subheader("Uploaded Receipt Images")
+        columns = st.columns(len(st.session_state.file_paths))
+        for i, img_path in enumerate(st.session_state.file_paths):
+            if os.path.exists(img_path):
+                with columns[i]:
+                    if img_path.endswith(".pdf"):
+                        pdf_viewer(img_path)
+                    else:
+                        st.image(img_path, caption=f"Receipt Image {i}")
+
+if st.session_state.file_paths and st.button("Extract Receipt Data"):
+    extracted_data = extract_data_mock(st.session_state.file_paths)
     receipt = Receipt(
-        **extracted_data, image_paths=st.session_state.image_paths
+        **extracted_data, file_paths=st.session_state.file_paths
     )  # Save the image path with the extracted data
     st.session_state.extracted_data = receipt
 
-# Editable fields for the extracted data
-if st.session_state.extracted_data:
-    st.subheader("Edit Extracted Data")
-    receipt = st.session_state.extracted_data
-
-    # Make the data editable
-    receipt_number = st.text_input("Receipt Number", value=receipt.receipt_number)
-    receipt_date = st.text_input("Receipt Date", value=receipt.date)
-    total_gross_amount = st.text_input(
-        "Total Gross Amount", value=str(receipt.total_gross_amount)
-    )
-    total_net_amount = st.text_input(
-        "Total Net Amount", value=str(receipt.total_net_amount)
-    )
-    vat_amount = st.text_input("VAT Amount", value=str(receipt.vat_amount))
-    company_name = st.text_input("Company Name", value=receipt.company_name)
-    description = st.text_area("Description", value=receipt.description)
-    is_credit = st.checkbox("Is Credit", value=receipt.is_credit)
-
-    if st.button("Save to Database"):
-        # Update the extracted data with user inputs
-        updated_receipt = Receipt(
-            receipt_number=receipt_number,
-            date=receipt_date,
-            total_gross_amount=float(total_gross_amount),
-            total_net_amount=float(total_net_amount),
-            vat_amount=float(vat_amount),
-            company_name=company_name,
-            description=description,
-            is_credit=is_credit,
-            image_paths=receipt.image_paths,
+with col_2:
+    # Editable fields for the extracted data
+    if st.session_state.extracted_data:
+        st.subheader("Edit Extracted Data")
+        inputs = get_receipt_inputs(
+            ReceiptDB(**st.session_state.extracted_data.__dict__)
         )
-        # Save updated receipt to the database
-        receipt_repo.create_receipt(updated_receipt.dict())
-        st.success("Receipt data saved successfully!")
-        # Clear session state after saving
-        st.session_state.extracted_data = None
-        st.session_state.image_paths = []
-        st.session_state.uploader_key += 1
-        # reload
-        st.rerun()
+
+        if st.button("Save to Database"):
+            # Update the extracted data with user inputs
+            updated_receipt = ReceiptDB(
+                receipt_number=inputs["receipt_number"],
+                date=inputs["receipt_date"],
+                total_gross_amount=(inputs["total_gross_amount"]),
+                total_net_amount=(inputs["total_net_amount"]),
+                vat_amount=(inputs["vat_amount"]),
+                company_name=inputs["company_name"],
+                description=inputs["description"],
+                is_credit=inputs["is_credit"],
+                file_paths=st.session_state.file_paths,
+                comment=inputs["comment"],
+                is_bio=inputs["is_bio"],
+            )
+            # Save updated receipt to the database
+            receipt_repo.create_receipt(updated_receipt)
+            st.success("Receipt data saved successfully!")
+            # Clear session state after saving
+            st.session_state.extracted_data = None
+            st.session_state.file_paths = []
+            st.session_state.uploader_key += 1
+            # reload
+            st.rerun()

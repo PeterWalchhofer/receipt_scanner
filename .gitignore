@@ -1,3 +1,5 @@
 saved_images/*
 *.pyc
 receipts.db
+.env
+cache.json
