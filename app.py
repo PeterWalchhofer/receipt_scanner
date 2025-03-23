@@ -1,4 +1,7 @@
 import streamlit as st
+import dotenv
+
+dotenv.load_dotenv()
 
 pg = st.navigation(
     [
