@@ -34,7 +34,7 @@ class ReceiptDB(Base):
     __tablename__ = "receipts"
     created_on = Column(DateTime(timezone=True), server_default=func.now())
     updated_on = Column(DateTime(timezone=True), onupdate=func.now())
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     receipt_number = Column(String, index=True)
     date = Column(String)
     total_gross_amount = Column(Float)
