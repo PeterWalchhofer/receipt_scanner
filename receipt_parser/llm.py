@@ -4,6 +4,7 @@ import json
 from io import BytesIO
 from pathlib import Path
 
+import pdf2image
 from openai import OpenAI
 from PIL import Image, ImageOps
 from pillow_heif import register_heif_opener
@@ -22,8 +23,25 @@ def encode_image(image_path):
     return base64_img
 
 
+def encode_pdf(pdf_path):
+    images = pdf2image.convert_from_path(pdf_path)
+    base64_images = [encode_image(img) for img in images]
+    return base64_images
+
+
 def get_prompt(img_paths: list[str]) -> dict:
-    base64_images = [encode_image(img_path) for img_path in img_paths]
+    base64_images = [
+        encode_image(img_path)
+        for img_path in img_paths
+        if not img_path.endswith(".pdf")
+    ]
+    base64_images += [
+        base64_image
+        for pdf_path in img_paths
+        if pdf_path.endswith(".pdf")
+        for base64_image in encode_pdf(pdf_path)
+    ]
+
     return {
         "model": "chatgpt-4o-latest",
         "response_format": {"type": "json_object"},
