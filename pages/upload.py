@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 import streamlit as st
+from PIL import Image, ImageOps
 from streamlit_pdf_viewer import pdf_viewer
 
 from components.input import get_receipt_inputs
@@ -101,6 +102,8 @@ with col_1:
                     if img_path.endswith(".pdf"):
                         pdf_viewer(img_path)
                     else:
+                        img = Image.open(img_path)
+                        img = ImageOps.exif_transpose(img)
                         st.image(img_path, caption=f"Receipt Image {i}")
 
 if st.session_state.file_paths and st.button("Extract Receipt Data"):

@@ -2,7 +2,6 @@ import uuid
 
 from sqlalchemy import (
     JSON,
-    UUID,
     Boolean,
     Column,
     DateTime,

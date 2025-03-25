@@ -1,4 +1,5 @@
 import streamlit as st
+from PIL import Image, ImageOps
 from streamlit_pdf_viewer import pdf_viewer
 from components.input import get_receipt_inputs
 from repository.receipt_repository import ReceiptDB, ReceiptRepository
@@ -31,8 +32,10 @@ if receipt_id:
                     if file_path.endswith(".pdf"):
                         pdf_viewer(file_path)
                     else:
+                        img = Image.open(file_path)
+                        img = ImageOps.exif_transpose(img)
                         st.image(
-                            file_path,
+                            img,
                             caption="Receipt Image",
                             use_container_width=True,
                         )
