@@ -3,3 +3,5 @@ saved_images/*
 receipts.db
 .env
 cache.json
+backup_checksum.txt
+backup.tar.gz

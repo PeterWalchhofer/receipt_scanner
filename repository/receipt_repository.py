@@ -1,5 +1,6 @@
+import os
 import uuid
-
+import datetime
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -56,6 +57,19 @@ class ReceiptRepository:
         with SessionLocal() as session:
             Base.metadata.create_all(bind=session.bind)
 
+    def clean_up(self):
+        """Get all paths and compre with local dir /saved_images. Delete images in saved_images that are not in the database"""
+        with SessionLocal() as session:
+            db_paths = session.query(ReceiptDB.file_paths).all()
+            db_paths = set(path for path_group in db_paths for path in path_group[0])
+
+        local_paths = os.listdir("saved_images")
+        for local_path in local_paths:
+            local_path = "saved_images/" + local_path
+            if local_path not in db_paths:
+                os.remove(f"saved_images/{local_path}")
+                print(f"Deleted {local_path}")
+
     def create_receipt(self, db_receipt: ReceiptDB) -> ReceiptDB:
         with SessionLocal() as session:
             session.add(db_receipt)
@@ -87,6 +101,8 @@ class ReceiptRepository:
             session.commit()
 
     def get_all_receipts(self):
+        if datetime.datetime.now().minute % 10 == 0:
+            self.clean_up()
         with SessionLocal() as session:
             return session.query(ReceiptDB).order_by(ReceiptDB.created_on.desc()).all()
 
