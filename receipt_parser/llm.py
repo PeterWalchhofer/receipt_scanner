@@ -13,8 +13,7 @@ register_heif_opener()
 client = OpenAI()
 
 
-def encode_image(image_path):
-    img = Image.open(image_path)
+def encode_image(img):
     img = ImageOps.exif_transpose(img)
     img.thumbnail((1920, 1080))
     buffered = BytesIO()
@@ -31,7 +30,7 @@ def encode_pdf(pdf_path):
 
 def get_prompt(img_paths: list[str]) -> dict:
     base64_images = [
-        encode_image(img_path)
+        encode_image(Image.open(img_path))
         for img_path in img_paths
         if not img_path.endswith(".pdf")
     ]
