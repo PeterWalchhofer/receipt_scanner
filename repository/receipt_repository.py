@@ -67,7 +67,7 @@ class ReceiptRepository:
         for local_path in local_paths:
             local_path = "saved_images/" + local_path
             if local_path not in db_paths:
-                os.remove(f"saved_images/{local_path}")
+                os.remove(local_path)
                 print(f"Deleted {local_path}")
 
     def create_receipt(self, db_receipt: ReceiptDB) -> ReceiptDB:
