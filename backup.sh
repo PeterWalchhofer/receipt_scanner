@@ -1,6 +1,12 @@
 #!/bin/bash
 
-# Define paths
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Change to script directory
+cd "$SCRIPT_DIR" || exit 1  # Exit if cd fails
+
+# Define paths (relative to script directory)
 DB_FILE="receipts.db"
 IMG_DIR="saved_images"
 BACKUP_DIR="/media/peter/backups"
@@ -26,15 +32,15 @@ fi
 
 # Compare checksums
 if [ "$NEW_CHECKSUM" != "$OLD_CHECKSUM" ]; then
-    # Create a new backup
+    # Create a new backup (preserves relative paths)
     tar czf "$BACKUP_FILE" "$DB_FILE" "$IMG_DIR"
     echo "$NEW_CHECKSUM" > "$CHECKSUM_FILE"
     echo "Backup created: $BACKUP_FILE"
 
-    # Ensure /temp exists
+    # Ensure extract directory exists
     mkdir -p "$EXTRACT_DIR"
 
-    # Extract into /temp
+    # Extract into temp directory (preserves relative paths)
     tar xzf "$BACKUP_FILE" -C "$EXTRACT_DIR"
     echo "Backup extracted to $EXTRACT_DIR"
 else
