@@ -2,6 +2,7 @@ import json
 import os
 import random
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 
 import streamlit as st
@@ -10,7 +11,7 @@ from streamlit_pdf_viewer import pdf_viewer
 
 from components.input import get_receipt_inputs
 from models.receipt import Receipt
-from receipt_parser.llm import get_prompt, query_openai
+from receipt_parser.llm import Prompt, get_prompt, query_openai
 from repository.receipt_repository import ReceiptDB, ReceiptRepository
 
 
@@ -25,6 +26,7 @@ def init_session_state():
         "file_paths": [],
         "uploader_key": 0,
         "expanded": {},
+        "prompt": Prompt.DEFAULT,
     }
     for key, value in default_values.items():
         if key not in st.session_state:
@@ -35,7 +37,7 @@ init_session_state()
 
 
 # Dummy Machine Learning Function (as before)
-def extract_data_mock(file_paths):
+def extract_data_mock(file_paths, prompt_type, custom_prompt=None):
     print("extracted")
     return {
         "receipt_number": "ABC123",
@@ -44,13 +46,13 @@ def extract_data_mock(file_paths):
         "total_net_amount": 120.00,
         "vat_amount": 30.00,
         "company_name": "XYZ Corp",
-        "description": "Product A, Product B",
+        "description": f"Number of items: {len(file_paths)}\n Prompt Type: {prompt_type}\n Custom Prompt: {custom_prompt}",
         "is_credit": False,
     }
 
 
-def extract_data(file_paths):
-    response = query_openai(get_prompt(file_paths))
+def extract_data(file_paths, prompt_type, custom_prompt=None):
+    response = query_openai(get_prompt(file_paths, prompt_type, custom_prompt))
     json_dict = json.loads(response)
     return json_dict
 
@@ -106,11 +108,26 @@ with col_1:
                         img = ImageOps.exif_transpose(img)
                         st.image(img_path, caption=f"Receipt Image {i}")
 
+custom_prompt = None
+if st.session_state.file_paths:
+    receipt_type = st.pills(
+        "Receipt Type",
+        options=[prompt.value for prompt in Prompt],
+        key="prompt",
+        default=Prompt.DEFAULT.value,
+    )
+    if receipt_type == Prompt.CUSTOM.value:
+        custom_prompt = st.text_area(
+            "Custom Prompt",
+            value="You are an expert receipt extraction algorithm. Only extract relevant information from the text. If you do not know the value of an attribute asked to extract, return null for the attribute's value.",
+            key="custom_prompt",
+        )
+
 if st.session_state.file_paths and st.button("Extract Receipt Data"):
-    extracted_data = extract_data_mock(st.session_state.file_paths)
-    receipt = Receipt(
-        **extracted_data, file_paths=st.session_state.file_paths
-    )  # Save the image path with the extracted data
+    extracted_data = extract_data(
+        st.session_state.file_paths, Prompt(receipt_type), custom_prompt
+    )
+    receipt = Receipt(**extracted_data)  # Save the image path with the extracted data
     st.session_state.extracted_data = receipt
 
 with col_2:

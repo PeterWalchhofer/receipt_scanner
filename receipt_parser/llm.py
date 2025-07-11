@@ -1,4 +1,5 @@
 import base64
+from enum import Enum
 import hashlib
 import json
 from io import BytesIO
@@ -12,6 +13,11 @@ from pillow_heif import register_heif_opener
 register_heif_opener()
 client = OpenAI()
 
+class Prompt(Enum):
+    DEFAULT = "Standard"
+    WOCHENMARKT = "Wochenmarkt"
+    KEMMTS_EINA = "Kemmts Eina"
+    CUSTOM = "Manuelle Eingabe"
 
 def encode_image(img):
     img = ImageOps.exif_transpose(img)
@@ -27,8 +33,17 @@ def encode_pdf(pdf_path):
     base64_images = [encode_image(img) for img in images]
     return base64_images
 
+def get_prompt_text(prompt_type, custom_prompt=None):
+    if prompt_type == Prompt.CUSTOM:
+        return custom_prompt
+    if prompt_type == Prompt.WOCHENMARKT:
+        return "Extract: Receipt number, Date, Total gross amount, total net amount, VAT amount, company name, description and is_credit. Note: Here we have a receipt from the weekly market. The weekly market is done by two framers and only one of them is relevant for us. Extract the text from the small sheet with the title 'Verkäufe pro Warengruppe'. Then number '1' with Warengruppe 'HIASN' is relevant and should be extracted as the GROSS amount. The VAT always is 10% from the GROSS amount. The NET amount is the GROSS amount minus the VAT. The company name should be 'Marktwagen'. The description should be 'Marktwagen' as well. The 'is_credit' should be 'True' as it is a credit note."
+    if prompt_type == Prompt.KEMMTS_EINA:
+        return "Extract: Receipt number, Date, Total gross amount, total net amount, VAT amount, company name, description and is_credit. Note: This is a receipt from our local market, hence is_credit is true. The company name is 'Kemmts Eina'. The VAT is 10% from the GROSS amount."
+    return "Extract: Receipt number, Date, Total gross amount, total net amount, VAT amount, company name, description and is_credit."
 
-def get_prompt(img_paths: list[str]) -> dict:
+
+def get_prompt(img_paths: list[str], prompt_type: Prompt, custom_prompt: str | None) -> dict:
     base64_images = [
         encode_image(Image.open(img_path))
         for img_path in img_paths
@@ -40,7 +55,7 @@ def get_prompt(img_paths: list[str]) -> dict:
         if pdf_path.endswith(".pdf")
         for base64_image in encode_pdf(pdf_path)
     ]
-
+    print(get_prompt_text(prompt_type, custom_prompt))
     return {
         "model": "chatgpt-4o-latest",
         "response_format": {"type": "json_object"},
@@ -73,7 +88,7 @@ def get_prompt(img_paths: list[str]) -> dict:
                 "content": [
                     {
                         "type": "text",
-                        "text": "Extract: Receipt number, Date, Total gross amount, total net amount, VAT amount, company name, descriptuon and is_credit. ",
+                        "text": get_prompt_text(prompt_type, custom_prompt),
                     },
                     *[
                         {
