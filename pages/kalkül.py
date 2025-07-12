@@ -33,6 +33,8 @@ if uploaded_zip:
             df = pd.read_csv(
                 csv_path, sep="\t" if "\t" in open(csv_path).read(1024) else ","
             )
+            df = df[~df["Stornorechnung?"]]
+            df["Datum"] = pd.to_datetime(df["Datum"])
             st.write(f"Found {len(df)} invoices in CSV.")
             imported = 0
             for idx, row in df.iterrows():
@@ -50,6 +52,7 @@ if uploaded_zip:
                 if not os.path.exists(dest_pdf):
                     with open(src_pdf, "rb") as fsrc, open(dest_pdf, "wb") as fdst:
                         fdst.write(fsrc.read())
+
                 # Map fields
                 db_receipt = ReceiptDB(
                     receipt_number=row["Nummer"],
