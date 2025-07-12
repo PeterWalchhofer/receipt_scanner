@@ -1,6 +1,7 @@
+import datetime
 import os
 import uuid
-import datetime
+
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -14,7 +15,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import func
 
-# from models.receipt import Base  # Adjust the import according to where you define your models
+from models.receipt import ReceiptSource  # add this import
 
 DATABASE_URL = "sqlite:///./receipts.db"
 # Database URL (SQLite in this case)
@@ -46,6 +47,7 @@ class ReceiptDB(Base):
     is_credit = Column(Boolean, default=False)
     is_bio = Column(Boolean, default=False)
     file_paths = Column(JSON)  # Store multiple image paths
+    source = Column(String, default=ReceiptSource.RECEIPT_SCANNER.value)
 
 
 # Repository Class

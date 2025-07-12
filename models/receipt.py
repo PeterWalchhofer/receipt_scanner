@@ -1,6 +1,13 @@
-from typing import List, Optional
+from enum import Enum
+from typing import Optional
 
 from pydantic import BaseModel, Field
+
+
+class ReceiptSource(str, Enum):
+    RECEIPT_SCANNER = "RECEIPT_SCANNER"
+    RECHNUNGSAPP = "RECHNUNGSAPP"
+    REGISTRIERKASSA = "REGISTRIERKASSA"
 
 
 class Receipt(BaseModel):
@@ -22,4 +29,8 @@ class Receipt(BaseModel):
     )
     is_credit: Optional[bool] = Field(
         None, description="Indicates if it's a credit note"
+    )
+    source: Optional[ReceiptSource] = Field(
+        default=ReceiptSource.RECEIPT_SCANNER,
+        description="Source of the receipt (RECEIPT_SCANNER, RECHNUNGSAPP, REGISTRIERKASSA)",
     )

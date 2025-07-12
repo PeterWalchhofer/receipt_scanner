@@ -41,6 +41,7 @@ if receipts:
         f"/receipt_detail?id={quote_plus(str(r.id))}" for r in receipts
     ]  # Clickable links
     df["progress"] = df["total_gross_amount"]
+    df["source"] = [getattr(r, "source", "RECEIPT_SCANNER") for r in receipts]
 
     main_cols = [
         "date",
@@ -48,6 +49,7 @@ if receipts:
         "total_gross_amount",
         "total_net_amount",
         "vat_amount",
+        "source",
         "Details",
         "progress",
     ]
@@ -83,6 +85,7 @@ if receipts:
                 max_value=df["progress"].max(),
                 format="euro",
             ),
+            "source": st.column_config.TextColumn("Quelle"),
         },
         use_container_width=True,
     )
@@ -97,6 +100,9 @@ if receipts:
             st.sidebar.markdown(f"**Company:** {receipt.company_name}")
             st.sidebar.markdown(f"**Gross:** {receipt.total_gross_amount}€")
             st.sidebar.markdown(f"**Net:** {receipt.total_net_amount}€")
+            st.sidebar.markdown(
+                f"**Source:** {getattr(receipt, 'source', 'RECEIPT_SCANNER')}"
+            )
 
             if receipt.file_paths:
                 st.sidebar.markdown("### Files")
@@ -124,6 +130,7 @@ if receipts:
                     is_credit=inputs["is_credit"],
                     is_bio=inputs["is_bio"],
                     file_paths=receipt.file_paths,
+                    source=inputs["source"],
                 )
                 receipt_repo.update_receipt(receipt_id, updated_receipt)
                 st.success("Changes saved successfully!")

@@ -1,10 +1,12 @@
 import streamlit as st
 from PIL import Image, ImageOps
 from streamlit_pdf_viewer import pdf_viewer
+
 from components.input import get_receipt_inputs
 from repository.receipt_repository import ReceiptDB, ReceiptRepository
 
 receipt_repo = ReceiptRepository()
+
 
 @st.dialog("Delete?")
 def delete_dialog():
@@ -14,6 +16,7 @@ def delete_dialog():
         st.success("Receipt deleted successfully!")
         # go to /view_receipts
         st.switch_page("pages/view_receipts.py")
+
 
 # Read query parameters
 query_params = st.query_params
@@ -57,6 +60,7 @@ if receipt_id:
                     is_credit=inputs["is_credit"],
                     is_bio=inputs["is_bio"],
                     file_paths=receipt.file_paths,
+                    source=inputs["source"],
                 )
                 receipt_repo.update_receipt(receipt_id, updated_receipt)
                 st.success("Changes saved successfully!")

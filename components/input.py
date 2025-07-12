@@ -1,5 +1,6 @@
 import streamlit as st
 
+from models.receipt import ReceiptSource
 from repository.receipt_repository import ReceiptDB
 
 
@@ -54,6 +55,15 @@ def get_receipt_inputs(receipt: ReceiptDB, receipt_id: int = 0):
     is_credit = st.checkbox(
         "Gutschrift", value=receipt.is_credit, key=f"is_credit_{receipt_id}"
     )
+    source_options = [e.value for e in ReceiptSource]
+    source = st.selectbox(
+        "Source",
+        options=source_options,
+        index=source_options.index(
+            getattr(receipt, "source", ReceiptSource.RECEIPT_SCANNER.value)
+        ),
+        key=f"source_{receipt_id}",
+    )
 
     return {
         "receipt_number": receipt_number,
@@ -66,4 +76,5 @@ def get_receipt_inputs(receipt: ReceiptDB, receipt_id: int = 0):
         "comment": comment,
         "is_bio": is_bio,
         "is_credit": is_credit,
+        "source": source,
     }
