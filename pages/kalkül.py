@@ -33,7 +33,6 @@ if uploaded_zip:
             df = pd.read_csv(
                 csv_path, sep="\t" if "\t" in open(csv_path).read(1024) else ","
             )
-            df = df[~df["Stornorechnung?"]]
             df["Datum"] = pd.to_datetime(df["Datum"])
             st.write(f"Found {len(df)} invoices in CSV.")
             imported = 0
@@ -52,7 +51,12 @@ if uploaded_zip:
                 if not os.path.exists(dest_pdf):
                     with open(src_pdf, "rb") as fsrc, open(dest_pdf, "wb") as fdst:
                         fdst.write(fsrc.read())
-
+                storno = row["Stornorechnung?"]
+                if storno:
+                    # flip signs
+                    row["Gesamter Bruttobetrag"] *= -1
+                    row["Gesamter Nettobetrag"] *= -1
+                    row["Gesamter Steuerbetrag"] *= -1
                 # Map fields
                 db_receipt = ReceiptDB(
                     receipt_number=row["Nummer"],
@@ -64,8 +68,8 @@ if uploaded_zip:
                     if not pd.isna(row["Kundenname"])
                     else "",
                     description="Verkauf Käse und Spezialitäten",
-                    comment=None,
-                    is_credit=True,
+                    comment=None if not storno else "Stornorechnung",
+                    is_credit=not storno,
                     is_bio=False,
                     file_paths=[dest_pdf],
                     source=ReceiptSource.RECHNUNGSAPP.value,
