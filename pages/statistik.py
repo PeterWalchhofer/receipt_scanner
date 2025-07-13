@@ -22,7 +22,7 @@ if "date" in df.columns:
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
 
 # Section: Overview
-st.header("Overview")
+st.header("Überblick")
 
 # 1. Summarize all expanses and all incomes (is_credit False/True) and visualize via Bar Chart
 income = df[df["is_credit"]]["total_gross_amount"].sum()
@@ -31,25 +31,27 @@ gewinn = income - expanse
 
 bar_data = pd.DataFrame(
     {
-        "Type": ["Income", "Expanse"],
-        "Amount": [income, expanse],
-        "Color": ["green", "red"],
+        "Type": ["Income", "Expanse", "Gewinn"],
+        "Amount": [income, expanse, gewinn],
+        "Color": ["green", "red", "darkgreen"],
     }
 )
 bar_chart = (
     alt.Chart(bar_data)
     .mark_bar()
     .encode(
-        x=alt.X("Type", sort=["Income", "Expanse"]),
+        x=alt.X("Type", sort=["Income", "Expanse", "Gewinn"]),
         y=alt.Y("Amount", title="Sum (€)"),
         color=alt.Color(
             "Type",
-            scale=alt.Scale(domain=["Income", "Expanse"], range=["green", "red"]),
+            scale=alt.Scale(
+                domain=["Income", "Expanse", "Gewinn"], range=["green", "red", "darkgreen"]
+            ),
             legend=None,
         ),
         tooltip=["Amount"],
     )
-    .properties(title="Income vs Expanse")
+    .properties(title="Income, Expanse & Gewinn")
 )
 st.altair_chart(bar_chart, use_container_width=True)
 st.markdown(f"**Gewinn:** {gewinn:.2f} €")
@@ -79,12 +81,12 @@ if "date" in df.columns:
     )
     st.altair_chart(line_chart, use_container_width=True)
 
-# 3. Bar Chart for the VAT. Compare the total income VAT and the Expanse VAT.
+# 3. Bar Chart for the VAT. Compare the total USt. Einnahmen and the USt. Ausgaben.
 income_vat = df[df["is_credit"]]["vat_amount"].sum()
 expanse_vat = df[~df["is_credit"]]["vat_amount"].sum()
 vat_data = pd.DataFrame(
     {
-        "Type": ["Income VAT", "Expanse VAT"],
+        "Type": ["USt. Einnahmen", "USt. Ausgaben"],
         "VAT": [income_vat, expanse_vat],
         "Color": ["green", "red"],
     }
@@ -93,23 +95,23 @@ vat_chart = (
     alt.Chart(vat_data)
     .mark_bar()
     .encode(
-        x=alt.X("Type", sort=["Income VAT", "Expanse VAT"]),
+        x=alt.X("Type", sort=["USt. Einnahmen", "USt. Ausgaben"]),
         y=alt.Y("VAT", title="Sum VAT (€)"),
         color=alt.Color(
             "Type",
             scale=alt.Scale(
-                domain=["Income VAT", "Expanse VAT"], range=["green", "red"]
+                domain=["USt. Einnahmen", "USt. Ausgaben"], range=["green", "red"]
             ),
             legend=None,
         ),
         tooltip=["VAT"],
     )
-    .properties(title="VAT Comparison")
+    .properties(title="USt. Vergleich")
 )
 st.altair_chart(vat_chart, use_container_width=True)
 
 # Section: Ausgaben
-st.header("Ausgaben (Expanses)")
+st.header("Ausgaben")
 K = st.number_input(
     "Number of top companies to show", min_value=1, max_value=20, value=5, step=1
 )
@@ -124,29 +126,36 @@ st.write(f"Top {int(K)} companies where expanses were made (by total net amount)
 st.table(expanse_companies)
 
 # Section: Einnahmen
-st.header("Einnahmen (Income)")
-income_companies = (
-    df[df["is_credit"]]
-    .groupby("company_name")["total_net_amount"]
-    .sum()
-    .sort_values(ascending=False)
-    .head(int(K))
-)
-st.write(f"Top {int(K)} companies where income was generated (by total net amount):")
-st.table(income_companies)
+st.header("Einnahmen")
 
-# 2. Bar Chart for the summarised income for each source (ReceiptSource)
-income_by_source = (
-    df[df["is_credit"]].groupby("source")["total_gross_amount"].sum().reset_index()
+
+def get_location(row):
+    if row["company_name"] == "Marktwagen":
+        return "Marktwagen"
+    elif row["company_name"] == "Kemmts Eina":
+        return "Kemmts Eina"
+    elif row["source"] == "RECHNUNGSAPP":
+        return "Lieferungen"
+    elif row["source"] == "REGISTRIERKASSA":
+        return "Hofladen"
+    else:
+        return "Other"
+
+
+income_df = df[df["is_credit"]].copy()
+income_df["location"] = income_df.apply(get_location, axis=1)
+location_income = (
+    income_df.groupby("location")["total_gross_amount"].sum().reset_index()
 )
-source_chart = (
-    alt.Chart(income_by_source)
+location_chart = (
+    alt.Chart(location_income)
     .mark_bar()
     .encode(
-        x=alt.X("source", title="Source"),
+        x=alt.X("location", title="Sales Location"),
         y=alt.Y("total_gross_amount", title="Income (€)"),
         tooltip=["total_gross_amount"],
+        color=alt.Color("location", legend=None),
     )
-    .properties(title="Income by Source")
+    .properties(title="Einkommen nach Verkaufsort")
 )
-st.altair_chart(source_chart, use_container_width=True)
+st.altair_chart(location_chart, use_container_width=True)
