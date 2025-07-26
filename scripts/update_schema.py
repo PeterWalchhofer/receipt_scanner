@@ -1,4 +1,5 @@
 import sqlite3
+# from repository.receipt_repository import ProductDB
 
 DB_PATH = "receipts.db"  # Change this if your DB file has a different name
 
@@ -20,5 +21,17 @@ def add_source_column(db_path):
     conn.close()
     print("Set default value for existing rows.")
 
+
+def add_products_table(db_path):
+    # drop products table if it exists
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute("DROP TABLE IF EXISTS products;")
+    conn.commit()
+    conn.close()
+
+
+
 if __name__ == "__main__":
-    add_source_column(DB_PATH)
+    # add_source_column(DB_PATH)#
+    add_products_table(DB_PATH)

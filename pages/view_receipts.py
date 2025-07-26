@@ -43,6 +43,36 @@ if receipts:
     df["progress"] = df["total_gross_amount"]
     df["source"] = [getattr(r, "source", "RECEIPT_SCANNER") for r in receipts]
 
+    # --- Filter UI ---
+    st.sidebar.header("Filter Receipts")
+    is_credit_filter = st.sidebar.selectbox(
+        "Einnahme (is_credit)", options=["All", True, False], index=0
+    )
+    is_bio_filter = st.sidebar.selectbox(
+        "Biokontrolle (is_bio)", options=["All", True, False], index=0
+    )
+    comment_filter = st.sidebar.selectbox(
+        "Kommentar", options=["All", "Has Comment", "No Comment"], index=0
+    )
+    company_options = ["All"] + sorted(df["company_name"].dropna().unique().tolist())
+    company_filter = st.sidebar.selectbox("Company", options=company_options, index=0)
+
+    filtered_df = df.copy()
+    if is_credit_filter != "All":
+        filtered_df = filtered_df[filtered_df["is_credit"] == is_credit_filter]
+    if is_bio_filter != "All":
+        filtered_df = filtered_df[filtered_df["is_bio"] == is_bio_filter]
+    if comment_filter == "Has Comment":
+        filtered_df = filtered_df[
+            filtered_df["comment"].notnull() & (filtered_df["comment"] != "")
+        ]
+    elif comment_filter == "No Comment":
+        filtered_df = filtered_df[
+            filtered_df["comment"].isnull() | (filtered_df["comment"] == "")
+        ]
+    if company_filter != "All":
+        filtered_df = filtered_df[filtered_df["company_name"] == company_filter]
+
     main_cols = [
         "date",
         "company_name",
@@ -55,9 +85,9 @@ if receipts:
     ]
     # Display DataFrame as a table
     st.dataframe(
-        df,
+        filtered_df,
         column_order=(
-            [*main_cols, *[col for col in df.columns if col not in main_cols]]
+            [*main_cols, *[col for col in filtered_df.columns if col not in main_cols]]
         ),
         column_config={
             "id": None,
@@ -82,7 +112,7 @@ if receipts:
             "progress": st.column_config.ProgressColumn(
                 "💰 Gross (€)",
                 min_value=0,
-                max_value=df["progress"].max(),
+                max_value=filtered_df["progress"].max() if not filtered_df.empty else 0,
                 format="euro",
             ),
             "source": st.column_config.TextColumn("Quelle"),

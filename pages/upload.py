@@ -10,6 +10,8 @@ from PIL import Image, ImageOps
 from streamlit_pdf_viewer import pdf_viewer
 
 from components.input import get_receipt_inputs
+from components.product_grid import product_grid_ui
+from components.product_db_ops import get_products_for_receipt
 from models.receipt import Receipt
 from receipt_parser.llm import Prompt, get_prompt, query_openai
 from repository.receipt_repository import ReceiptDB, ReceiptRepository
@@ -154,8 +156,20 @@ with col_2:
                 is_bio=inputs["is_bio"],
             )
             # Save updated receipt to the database
-            receipt_repo.create_receipt(updated_receipt)
+            created_receipt = receipt_repo.create_receipt(updated_receipt)
             st.success("Receipt data saved successfully!")
+            # After saving, show product management UI for this receipt
+            if created_receipt:
+                st.markdown("---")
+                st.subheader("Products")
+                products = get_products_for_receipt(created_receipt.id)
+                product_grid_ui(
+                    receipt_id=created_receipt.id,
+                    is_bio=created_receipt.is_bio,
+                    products=products,
+                    prefix="upload_",
+                    show_price=True,
+                )
             # Clear session state after saving
             st.session_state.extracted_data = None
             st.session_state.file_paths = []

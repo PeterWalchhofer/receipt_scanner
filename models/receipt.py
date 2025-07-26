@@ -9,6 +9,20 @@ class ReceiptSource(str, Enum):
     RECHNUNGSAPP = "RECHNUNGSAPP"
     REGISTRIERKASSA = "REGISTRIERKASSA"
 
+class Product(BaseModel):
+    id: Optional[str] = Field(None, description="Product ID")
+    receipt_id: str = Field(
+        ..., description="Related receipt ID (join to ReceiptDB.id)"
+    )
+    name: str = Field(..., description="Name of the product")
+    is_bio: bool = Field(..., description="Is the product organic?")
+    bio_category: Optional[str] = Field(
+        None, description="Bio category (required if is_bio is True)"
+    )
+    amount: float = Field(..., description="Amount of the product")
+    unit: str = Field(..., description="Unit of the product (KILO, LITER, PIECE)")
+    price: float = Field(..., description="Price of the product per unit")
+
 
 class Receipt(BaseModel):
     id: Optional[int] = Field(None, description="Receipt ID")
@@ -33,4 +47,7 @@ class Receipt(BaseModel):
     source: Optional[ReceiptSource] = Field(
         default=ReceiptSource.RECEIPT_SCANNER,
         description="Source of the receipt (RECEIPT_SCANNER, RECHNUNGSAPP, REGISTRIERKASSA)",
+    )
+    products: list[Product] = Field(
+        default_factory=list, description="List of products in the receipt"
     )

@@ -8,14 +8,19 @@ from sqlalchemy import (
     Column,
     DateTime,
     Float,
+    ForeignKey,
     String,
     create_engine,
+)
+from sqlalchemy import (
+    Enum as SAEnum,
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import func
 
-from models.receipt import ReceiptSource  # add this import
+from models.product import BioCategory, ProductUnit
+from models.receipt import ReceiptSource
 
 DATABASE_URL = "sqlite:///./receipts.db"
 # Database URL (SQLite in this case)
@@ -50,7 +55,21 @@ class ReceiptDB(Base):
     source = Column(String, default=ReceiptSource.RECEIPT_SCANNER.value)
 
 
-# Repository Class
+# Product Table
+class ProductDB(Base):
+    __tablename__ = "products"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    receipt_id = Column(String, ForeignKey("receipts.id"), nullable=False, index=True)
+    name = Column(String, nullable=False)
+    is_bio = Column(Boolean, nullable=False)
+    bio_category = Column(SAEnum(BioCategory), nullable=True)
+    amount = Column(Float, nullable=False)
+    price = Column(Float, nullable=True)
+    unit = Column(SAEnum(ProductUnit), nullable=False)
+    created_on = Column(DateTime(timezone=True), server_default=func.now())
+    updated_on = Column(DateTime(timezone=True), onupdate=func.now())
+
+
 class ReceiptRepository:
     def __init__(self):
         self.init_db()
@@ -73,6 +92,7 @@ class ReceiptRepository:
                 print(f"Deleted {local_path}")
 
     def create_receipt(self, db_receipt: ReceiptDB) -> ReceiptDB:
+        print(db_receipt)
         with SessionLocal() as session:
             session.add(db_receipt)
             session.commit()
