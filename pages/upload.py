@@ -14,7 +14,12 @@ from components.product_db_ops import get_products_for_receipt
 from components.product_grid import product_grid_ui
 from models.receipt import Receipt
 from receipt_parser.llm import Prompt, get_prompt, query_openai
-from repository.receipt_repository import ProductDB, ReceiptDB, ReceiptRepository
+from repository.receipt_repository import (
+    ProductDB,
+    ReceiptDB,
+    ReceiptRepository,
+    SessionLocal,
+)
 
 
 # Initialize session state for extracted data
@@ -156,6 +161,16 @@ with col_2:
                 source=st.session_state.extracted_data.source,
             )
         )
+        allow_products_unsaved = (
+            not st.session_state.created_receipt
+            and (inputs["is_bio"] and not inputs["is_credit"])
+            or (
+                inputs["is_credit"]
+                and inputs["company_name"] in ["Kemmts Eina", "Marktwagen", "Hofladen"]
+            )
+        )
+        if allow_products_unsaved:
+            st.badge("To add products save first", icon="ℹ️")
 
         if st.button("Save to Database"):
             # Update the extracted data with user inputs
@@ -175,38 +190,38 @@ with col_2:
             # Save updated receipt to the database
             created_receipt = receipt_repo.create_receipt(updated_receipt)
             st.session_state.created_receipt = created_receipt
+            # Save extracted products to DB if any
+            if st.session_state.products:
+                for p in st.session_state.products:
+                    p_db = ProductDB(
+                        receipt_id=created_receipt.id,
+                        name=p.name,
+                        amount=p.amount,
+                        price=p.price,
+                        is_bio=inputs["is_bio"],
+                        unit=p.unit,
+                        bio_category=p.bio_category,
+                    )
+                    with SessionLocal() as session:
+                        session.add(p_db)
+                        session.commit()
+            st.session_state.products = None  # Clear extracted products after saving
             st.success("Receipt data saved successfully!")
-            # After saving, show product management UI for this receipt
 
 created_receipt = st.session_state.created_receipt
 allow_products = created_receipt and (
     (created_receipt.is_bio and not created_receipt.is_credit)
     or (
         created_receipt.is_credit
-        and created_receipt.company in ["Kemmts Eina", "Marktwagen", "Hofladen"]
+        and created_receipt.company_name in ["Kemmts Eina", "Marktwagen", "Hofladen"]
     )
 )
 
 if allow_products and created_receipt:
     st.markdown("---")
     st.subheader("Products")
-    products = st.session_state.products
-    print("<<<<<<<< products", products)
-    products_db = []
-    if products:
-        for p in products:
-            p_db = ProductDB(
-                name=p.name,
-                amount=p.amount,
-                price=p.price,
-                is_bio=inputs["is_bio"],
-                unit=p.unit,
-                bio_category=p.bio_category,
-            )
-            products_db.append(p_db)
-
-    products_already_in_db = get_products_for_receipt(created_receipt.id)
-    products_db.extend(products_already_in_db)
+    # Only show products from DB after save
+    products_db = get_products_for_receipt(created_receipt.id)
     product_grid_ui(
         receipt_id=created_receipt.id,
         is_bio=created_receipt.is_bio,

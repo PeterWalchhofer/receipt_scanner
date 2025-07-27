@@ -36,6 +36,7 @@ def product_grid_ui(receipt_id, is_bio, products=None, prefix="", show_price=Tru
             with col:
                 if item == "add_form":
                     with st.form(f"{prefix}add_product_form"):
+                        st.badge("New", icon="⬆️")
                         st.subheader("Add New Product")
                         product_inputs = get_product_inputs(
                             product=None,
@@ -59,10 +60,14 @@ def product_grid_ui(receipt_id, is_bio, products=None, prefix="", show_price=Tru
                             st.success("Product added!")
                             st.rerun()
                 elif item is not None:
-                    with st.form(f"{prefix}edit_product_{item.id}"):
+                    with st.form(
+                        f"{prefix}edit_product_{item.id}_{item.name}_{item.amount}"
+                    ):
                         if item.id:
+                            st.badge("Edit", icon="✏️")
                             st.subheader("Edit Product")
                         else:
+                            st.badge("New", icon="⬆️")
                             st.subheader("New Product")
                         product_inputs = get_product_inputs(
                             product=item,
@@ -90,9 +95,7 @@ def product_grid_ui(receipt_id, is_bio, products=None, prefix="", show_price=Tru
                                             receipt_id=str(receipt_id),
                                             name=product_inputs["name"],
                                             is_bio=product_inputs["is_bio"],
-                                            bio_category=product_inputs[
-                                                "bio_category"
-                                            ],
+                                            bio_category=product_inputs["bio_category"],
                                             amount=product_inputs["amount"],
                                             unit=product_inputs["unit"],
                                             price=product_inputs["price"],
@@ -100,7 +103,6 @@ def product_grid_ui(receipt_id, is_bio, products=None, prefix="", show_price=Tru
                                         session.add(new_product)
                                         session.commit()
                                 st.success("Product updated!")
-                                st.session_state.products.remove()
                                 st.rerun()
                         with col_delete:
                             if st.form_submit_button("Delete Product"):

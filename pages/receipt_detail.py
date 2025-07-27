@@ -2,7 +2,8 @@ import streamlit as st
 from PIL import Image, ImageOps
 from streamlit_pdf_viewer import pdf_viewer
 
-from components.input import get_product_inputs, get_receipt_inputs
+from components.input import get_receipt_inputs
+from components.product_grid import product_grid_ui
 from models.product import BioCategory, ProductUnit
 from repository.receipt_repository import (
     ProductDB,
@@ -97,6 +98,7 @@ if receipt_id:
             if st.button("Delete Receipt", key=f"delete_{receipt_id}"):
                 delete_dialog()
 
+
 # --- Product Management Section ---
 st.markdown("---")
 st.subheader("Products")
@@ -118,82 +120,10 @@ if show_products:
         products = (
             session.query(ProductDB).filter(ProductDB.receipt_id == receipt_id).all()
         )
-    if not products:
-        st.write("No products found for this receipt.")
-    # Display add new product form in the first cell of the grid, then existing products
-    max_cols = 4
-    total_products = len(products) + 1  # +1 for the add form
-    rows = (total_products + max_cols - 1) // max_cols
-    product_idx = 0
-    for row in range(rows):
-        row_items = []
-        for col in range(max_cols):
-            grid_idx = row * max_cols + col
-            if grid_idx == 0:
-                # Add New Product form in the first cell
-                row_items.append("add_form")
-            elif grid_idx - 1 < len(products):
-                row_items.append(products[grid_idx - 1])
-            else:
-                row_items.append(None)
-        cols = st.columns(max_cols)
-        for col, item in zip(cols, row_items):
-            with col:
-                if item == "add_form":
-                    with st.form("add_product_form"):
-                        st.subheader("Add New Product")
-                        product_inputs = get_product_inputs(
-                            product=None,
-                            default_is_bio=inputs["is_bio"],
-                            prefix="add_",
-                            show_price=True,
-                        )
-                        if st.form_submit_button("Add Product", icon="➕"):
-                            with SessionLocal() as session:
-                                new_product = ProductDB(
-                                    receipt_id=str(receipt_id),
-                                    name=product_inputs["name"],
-                                    is_bio=product_inputs["is_bio"],
-                                    bio_category=product_inputs["bio_category"],
-                                    amount=product_inputs["amount"],
-                                    unit=product_inputs["unit"],
-                                    price=product_inputs["price"],
-                                )
-                                session.add(new_product)
-                                session.commit()
-                            st.success("Product added!")
-                            st.rerun()
-                elif item is not None:
-                    with st.form(f"edit_product_{item.id}"):
-                        st.subheader(f"Edit Product: {row + 1}")
-                        product_inputs = get_product_inputs(
-                            product=item,
-                            prefix=f"edit_{item.id}_",
-                            show_price=True,
-                        )
-                        col_save, col_delete = st.columns(2)
-                        with col_save:
-                            if st.form_submit_button("Save Product"):
-                                with SessionLocal() as session:
-                                    prod = session.query(ProductDB).get(item.id)
-                                    if prod:
-                                        prod.name = product_inputs["name"]
-                                        prod.is_bio = product_inputs["is_bio"]
-                                        prod.bio_category = product_inputs[
-                                            "bio_category"
-                                        ]
-                                        prod.amount = product_inputs["amount"]
-                                        prod.unit = product_inputs["unit"]
-                                        prod.price = product_inputs["price"]
-                                        session.commit()
-                                st.success("Product updated!")
-                                st.rerun()
-                        with col_delete:
-                            if st.form_submit_button("Delete Product"):
-                                with SessionLocal() as session:
-                                    prod = session.query(ProductDB).get(item.id)
-                                    if prod:
-                                        session.delete(prod)
-                                        session.commit()
-                                st.success("Product deleted!")
-                                st.rerun()
+    product_grid_ui(
+        receipt_id=receipt_id,
+        is_bio=inputs["is_bio"],
+        products=products,
+        prefix="detail_",
+        show_price=True,
+    )
