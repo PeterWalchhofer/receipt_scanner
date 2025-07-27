@@ -13,19 +13,13 @@ class ProductUnit(str, Enum):
 
 class BioCategory(str, Enum):
     VERMARKTUNG_VERARBEITUNG = "Vermarktung/Verarbeitung"  # z.B. Olivenöl, Lab, Kulturen, Salz, Kräuter, Honig, Essig, usw.
-    PFLANZENBAU = (
-        "Pflanzenbau"  # z.B. Jungpflanzen, Weizensaat, Grünlandmischung usw.
-    )
+    PFLANZENBAU = "Pflanzenbau"  # z.B. Jungpflanzen, Weizensaat, Grünlandmischung usw.
     TIERHALTUNG = "Tierhaltung"  # z.B.- Dünger/Einstreu/Futter Sägespäne, Euterwolle, Euterpflege, Mineralfutter, Alpenkorn, Gerste, Stroh usw.
 
 
 class Product(BaseModel):
-    id: Optional[str] = Field(None, description="Product ID")
-    receipt_id: str = Field(
-        ..., description="Related receipt ID (join to ReceiptDB.id)"
-    )
     name: str = Field(..., description="Name of the product")
-    is_bio: bool = Field(..., description="Is the product organic?")
+    is_bio: bool | None = Field(True, description="Is the product organic?")
     bio_category: Optional[BioCategory] = Field(
         None, description="Bio category (required if is_bio is True)"
     )
@@ -33,5 +27,6 @@ class Product(BaseModel):
     unit: ProductUnit = Field(
         ..., description="Unit of the product (KILO, LITER, PIECE)"
     )
-    created_on: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    updated_on: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    price: float | None = Field(
+        None, description="Price of the product per unit (optional)"
+    )

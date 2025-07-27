@@ -39,37 +39,18 @@ def encode_pdf(pdf_path):
 def get_prompt_text(prompt_type, custom_prompt=None):
     if prompt_type == Prompt.CUSTOM:
         return custom_prompt
-    product_examples = """
-Each receipt may have a list of products. Each product has:
-- name: string (required)
-- is_bio: boolean (required)
-- bio_category: enum (optional, only if is_bio is true)
-- amount: float (required)
-- unit: string (required, e.g. 'KILO', 'LITER', 'PIECE')
 
-BioCategory possible values:
-- Vermarktung/Verarbeitung: e.g. Olivenöl, Lab, Kulturen, Salz, Kräuter, Honig, Essig, usw.
-- Pflanzenbau/Saatgut: e.g. Jungpflanzen, Weizensaat, Grünlandmischung usw.
-- Tierhaltung- Dünger/Einstreu/Futter: e.g. Sägespäne, Euterwolle, Euterpflege, Mineralfutter, Alpenkorn, Gerste, Stroh usw.
-
-If bio_category is set, is_bio must be true.
-"""
     if prompt_type == Prompt.WOCHENMARKT:
         return (
             "Extract: Receipt number, Date, Total gross amount, total net amount, VAT amount, company name, description, is_credit, and a list of products. "
-            + product_examples
             + " Note: Here we have a receipt from the weekly market. The weekly market is done by two framers and only one of them is relevant for us. Extract the text from the small sheet with the title 'Verkäufe pro Warengruppe'. Then number '1' with Warengruppe 'HIASN' is relevant and should be extracted as the GROSS amount. The VAT always is 10% from the GROSS amount. The NET amount is the GROSS amount minus the VAT. The company name should be 'Marktwagen'. The description should be 'Marktwagen' as well. The 'is_credit' should be 'True' as it is a credit note."
         )
     if prompt_type == Prompt.KEMMTS_EINA:
         return (
             "Extract: Receipt number, Date, Total gross amount, total net amount, VAT amount, company name, description, is_credit, and a list of products. "
-            + product_examples
             + " Note: This is a receipt from our local market, hence is_credit is true. The company name is 'Kemmts Eina'. The VAT is 10% from the GROSS amount."
         )
-    return (
-        "Extract: Receipt number, Date, Total gross amount, total net amount, VAT amount, company name, description, is_credit, and a list of products. "
-        + product_examples
-    )
+    return "Extract: Receipt number, Date, Total gross amount, total net amount, VAT amount, company name, description, is_credit, and a list of products. "
 
 
 def get_prompt(
@@ -112,7 +93,7 @@ def get_prompt(
                 }."""
                 """
                 Product is defined as:
-                product = {
+                Product = {
                     name: string
                     amount: float,
                     unit: ProductUnit,
@@ -121,6 +102,11 @@ def get_prompt(
                 }."""
                 "ProductUnit is an enum with the following values: 'KILO', 'LITER', 'PIECE'."
                 "BioCategory is an enum with the following values: 'Vermarktung/Verarbeitung', 'Pflanzenbau', 'Tierhaltung'."
+                """BioCategory examples:
+                - 'Vermarktung/Verarbeitung': e.g. Olivenöl, Lab, Kulturen, Salz, Kräuter, Honig, Essig, usw.
+                - 'Pflanzenbau': e.g. Jungpflanzen, Weizensaat, Grünlandmischung usw.
+                - 'Tierhaltung': e.g. Dünger/Einstreu/Futter, Sägespäne, Euterwolle, Euterpflege, Mineralfutter, Alpenkorn, Gerste, Stroh usw.
+                """
                 "null is allowed for any attribute. (Do not use 'null', but null as a value.)"
                 "The description should also be in German and should briefly describe the products or services bought."
                 "The 'is_credit' flag determines if it is a receipt (false) or a credit note (true). E.g. for milk, cheese or wood it often is a credit note, as we earn money from that. Mostly, thouugh it is a receipt."

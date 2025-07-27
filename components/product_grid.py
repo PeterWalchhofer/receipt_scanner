@@ -1,6 +1,8 @@
 import streamlit as st
-from repository.receipt_repository import ProductDB, SessionLocal
+
 from components.input import get_product_inputs
+from repository.receipt_repository import ProductDB, SessionLocal
+
 
 def product_grid_ui(receipt_id, is_bio, products=None, prefix="", show_price=True):
     """
@@ -58,7 +60,10 @@ def product_grid_ui(receipt_id, is_bio, products=None, prefix="", show_price=Tru
                             st.rerun()
                 elif item is not None:
                     with st.form(f"{prefix}edit_product_{item.id}"):
-                        st.subheader("Edit Product")
+                        if item.id:
+                            st.subheader("Edit Product")
+                        else:
+                            st.subheader("New Product")
                         product_inputs = get_product_inputs(
                             product=item,
                             prefix=f"{prefix}edit_{item.id}_",
@@ -72,12 +77,30 @@ def product_grid_ui(receipt_id, is_bio, products=None, prefix="", show_price=Tru
                                     if prod:
                                         prod.name = product_inputs["name"]
                                         prod.is_bio = product_inputs["is_bio"]
-                                        prod.bio_category = product_inputs["bio_category"]
+                                        prod.bio_category = product_inputs[
+                                            "bio_category"
+                                        ]
                                         prod.amount = product_inputs["amount"]
                                         prod.unit = product_inputs["unit"]
                                         prod.price = product_inputs["price"]
                                         session.commit()
+                                    # pre-populated from chatgpt
+                                    else:
+                                        new_product = ProductDB(
+                                            receipt_id=str(receipt_id),
+                                            name=product_inputs["name"],
+                                            is_bio=product_inputs["is_bio"],
+                                            bio_category=product_inputs[
+                                                "bio_category"
+                                            ],
+                                            amount=product_inputs["amount"],
+                                            unit=product_inputs["unit"],
+                                            price=product_inputs["price"],
+                                        )
+                                        session.add(new_product)
+                                        session.commit()
                                 st.success("Product updated!")
+                                st.session_state.products.remove()
                                 st.rerun()
                         with col_delete:
                             if st.form_submit_button("Delete Product"):

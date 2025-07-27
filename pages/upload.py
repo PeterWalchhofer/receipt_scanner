@@ -10,17 +10,19 @@ from PIL import Image, ImageOps
 from streamlit_pdf_viewer import pdf_viewer
 
 from components.input import get_receipt_inputs
-from components.product_grid import product_grid_ui
 from components.product_db_ops import get_products_for_receipt
+from components.product_grid import product_grid_ui
 from models.receipt import Receipt
 from receipt_parser.llm import Prompt, get_prompt, query_openai
-from repository.receipt_repository import ReceiptDB, ReceiptRepository
+from repository.receipt_repository import ProductDB, ReceiptDB, ReceiptRepository
 
 
 # Initialize session state for extracted data
 def init_session_state():
     default_values = {
         "extracted_data": None,
+        "products": None,
+        "created_receipt": None,
         "receipt_date": "",
         "receipt_number": "",
         "sum_gross": "",
@@ -131,13 +133,28 @@ if st.session_state.file_paths and st.button("Extract Receipt Data"):
     )
     receipt = Receipt(**extracted_data)  # Save the image path with the extracted data
     st.session_state.extracted_data = receipt
+    st.session_state.products = receipt.products
+    print(">>>>>>>>>")
+    print("products", st.session_state.products)
 
 with col_2:
     # Editable fields for the extracted data
     if st.session_state.extracted_data:
         st.subheader("Edit Extracted Data")
+
         inputs = get_receipt_inputs(
-            ReceiptDB(**st.session_state.extracted_data.__dict__)
+            ReceiptDB(
+                receipt_number=st.session_state.extracted_data.receipt_number,
+                date=st.session_state.extracted_data.date,
+                total_gross_amount=st.session_state.extracted_data.total_gross_amount,
+                total_net_amount=st.session_state.extracted_data.total_net_amount,
+                vat_amount=st.session_state.extracted_data.vat_amount,
+                company_name=st.session_state.extracted_data.company_name,
+                description=st.session_state.extracted_data.description,
+                is_credit=st.session_state.extracted_data.is_credit,
+                file_paths=st.session_state.file_paths,
+                source=st.session_state.extracted_data.source,
+            )
         )
 
         if st.button("Save to Database"):
@@ -157,22 +174,54 @@ with col_2:
             )
             # Save updated receipt to the database
             created_receipt = receipt_repo.create_receipt(updated_receipt)
+            st.session_state.created_receipt = created_receipt
             st.success("Receipt data saved successfully!")
             # After saving, show product management UI for this receipt
-            if created_receipt:
-                st.markdown("---")
-                st.subheader("Products")
-                products = get_products_for_receipt(created_receipt.id)
-                product_grid_ui(
-                    receipt_id=created_receipt.id,
-                    is_bio=created_receipt.is_bio,
-                    products=products,
-                    prefix="upload_",
-                    show_price=True,
-                )
-            # Clear session state after saving
-            st.session_state.extracted_data = None
-            st.session_state.file_paths = []
-            st.session_state.uploader_key += 1
-            # reload
-            st.rerun()
+
+created_receipt = st.session_state.created_receipt
+allow_products = created_receipt and (
+    (created_receipt.is_bio and not created_receipt.is_credit)
+    or (
+        created_receipt.is_credit
+        and created_receipt.company in ["Kemmts Eina", "Marktwagen", "Hofladen"]
+    )
+)
+
+if allow_products and created_receipt:
+    st.markdown("---")
+    st.subheader("Products")
+    products = st.session_state.products
+    print("<<<<<<<< products", products)
+    products_db = []
+    if products:
+        for p in products:
+            p_db = ProductDB(
+                name=p.name,
+                amount=p.amount,
+                price=p.price,
+                is_bio=inputs["is_bio"],
+                unit=p.unit,
+                bio_category=p.bio_category,
+            )
+            products_db.append(p_db)
+
+    products_already_in_db = get_products_for_receipt(created_receipt.id)
+    products_db.extend(products_already_in_db)
+    product_grid_ui(
+        receipt_id=created_receipt.id,
+        is_bio=created_receipt.is_bio,
+        products=products_db,
+        prefix="upload_",
+        show_price=True,
+    )
+
+if (created_receipt and not allow_products) or (
+    created_receipt and st.button("Upload new receipt")
+):
+    # Clear session state after saving
+    st.session_state.extracted_data = None
+    st.session_state.products = None
+    st.session_state.file_paths = []
+    st.session_state.uploader_key += 1
+    # reload
+    st.rerun()

@@ -1,8 +1,10 @@
 from repository.receipt_repository import ProductDB, SessionLocal
 
+
 def get_products_for_receipt(receipt_id):
     with SessionLocal() as session:
         return session.query(ProductDB).filter(ProductDB.receipt_id == receipt_id).all()
+
 
 def add_product_to_receipt(receipt_id, product_inputs):
     with SessionLocal() as session:
@@ -19,6 +21,7 @@ def add_product_to_receipt(receipt_id, product_inputs):
         session.commit()
         return new_product
 
+
 def update_product(product_id, product_inputs):
     with SessionLocal() as session:
         prod = session.query(ProductDB).get(product_id)
@@ -31,6 +34,7 @@ def update_product(product_id, product_inputs):
             prod.price = product_inputs["price"]
             session.commit()
         return prod
+
 
 def delete_product(product_id):
     with SessionLocal() as session:

@@ -53,6 +53,7 @@ class ReceiptDB(Base):
     is_bio = Column(Boolean, default=False)
     file_paths = Column(JSON)  # Store multiple image paths
     source = Column(String, default=ReceiptSource.RECEIPT_SCANNER.value)
+    
 
 
 # Product Table

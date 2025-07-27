@@ -3,25 +3,13 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from models.product import Product
+
 
 class ReceiptSource(str, Enum):
     RECEIPT_SCANNER = "RECEIPT_SCANNER"
     RECHNUNGSAPP = "RECHNUNGSAPP"
     REGISTRIERKASSA = "REGISTRIERKASSA"
-
-class Product(BaseModel):
-    id: Optional[str] = Field(None, description="Product ID")
-    receipt_id: str = Field(
-        ..., description="Related receipt ID (join to ReceiptDB.id)"
-    )
-    name: str = Field(..., description="Name of the product")
-    is_bio: bool = Field(..., description="Is the product organic?")
-    bio_category: Optional[str] = Field(
-        None, description="Bio category (required if is_bio is True)"
-    )
-    amount: float = Field(..., description="Amount of the product")
-    unit: str = Field(..., description="Unit of the product (KILO, LITER, PIECE)")
-    price: float = Field(..., description="Price of the product per unit")
 
 
 class Receipt(BaseModel):
@@ -49,5 +37,5 @@ class Receipt(BaseModel):
         description="Source of the receipt (RECEIPT_SCANNER, RECHNUNGSAPP, REGISTRIERKASSA)",
     )
     products: list[Product] = Field(
-        default_factory=list, description="List of products in the receipt"
+        default=[], description="List of products in the receipt"
     )
