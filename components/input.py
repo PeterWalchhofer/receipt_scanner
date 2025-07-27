@@ -60,9 +60,7 @@ def get_receipt_inputs(receipt: ReceiptDB, receipt_id: int = 0):
     source = st.selectbox(
         "Source",
         options=source_options,
-        index=source_options.index(
-            getattr(receipt, "source", ReceiptSource.RECEIPT_SCANNER.value)
-        ),
+        index=source_options.index(ReceiptSource.RECEIPT_SCANNER.value),
         key=f"source_{receipt_id}",
     )
 

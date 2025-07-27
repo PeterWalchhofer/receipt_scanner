@@ -24,6 +24,9 @@ class Receipt(BaseModel):
     total_net_amount: Optional[float] = Field(
         None, description="Total amount without tax"
     )
+    is_bio: Optional[bool] = Field(
+        None, description="Indicates if the receipt is relevant for organic monitoring"
+    )
     vat_amount: Optional[float] = Field(None, description="VAT amount")
     company_name: Optional[str] = Field(None, description="Name of the issuing company")
     description: Optional[str] = Field(

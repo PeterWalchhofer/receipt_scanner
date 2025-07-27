@@ -62,7 +62,11 @@ def extract_data_mock(file_paths, prompt_type, custom_prompt=None):
 
 def extract_data(file_paths, prompt_type, custom_prompt=None):
     response = query_openai(get_prompt(file_paths, prompt_type, custom_prompt))
-    json_dict = json.loads(response)
+    try:
+        json_dict = json.loads(response)
+    except json.JSONDecodeError:
+        print("Failed to decode JSON response", response)
+        return {}
     return json_dict
 
 
@@ -158,7 +162,6 @@ with col_2:
                 description=st.session_state.extracted_data.description,
                 is_credit=st.session_state.extracted_data.is_credit,
                 file_paths=st.session_state.file_paths,
-                source=st.session_state.extracted_data.source,
             )
         )
         allow_products_unsaved = (
@@ -237,6 +240,7 @@ if (created_receipt and not allow_products) or (
     st.session_state.extracted_data = None
     st.session_state.products = None
     st.session_state.file_paths = []
+    st.session_state.created_receipt = None
     st.session_state.uploader_key += 1
     # reload
     st.rerun()
