@@ -45,35 +45,46 @@ with SessionLocal() as session:
 # Filter: is_credit=True, company in KAESEINNAHMEN_COMPANIES
 # Sidebar filter
 st.sidebar.header("Filter Käseinnahmen")
+aggregated = st.sidebar.toggle("Aggregiert", value=False, key="kaese_aggregated")
 companies = [None] + sorted(df["company_name"].dropna().unique().tolist())
-company = st.sidebar.selectbox("Company", options=companies, key="kaese_company")
+company = st.sidebar.selectbox(
+    "Company", options=companies, key="kaese_company", disabled=aggregated
+)
 filtered = df.copy()
+unique_urls = filtered["receipt_url"].unique()
 if company:
     filtered = filtered[filtered["company_name"] == company]
+if aggregated:
+    filtered = (
+        filtered.groupby(["name", "unit"], as_index=False)
+        .agg({"amount": "sum", "price": "sum"})
+        .sort_values(by="name")
+    )
 # dfregate by name, unit, price, and Details, sum amount
 
 # Assign a color to each unique receipt_url
-unique_urls = df["receipt_url"].unique()
+
+if not aggregated:
+    filtered = filtered.style.apply(highlight_url, axis=1)
 
 
-
-
-styled_df = df.style.apply(highlight_url, axis=1)
-
+column_config = {
+    "name": "Product Name",
+    "amount": st.column_config.NumberColumn("Total Amount", step=0.01),
+    "price": st.column_config.ProgressColumn(
+        "Price (€)",
+        format="euro",
+        help="Visualize the price as a progress bar if available",
+    ),
+    "unit": "Unit",
+    "receipt_number": "Receipt Number",
+    "receipt_url": st.column_config.LinkColumn("🔍 Rechnung", display_text="Edit"),
+}
 st.dataframe(
-    styled_df,
+    filtered,
     use_container_width=True,
     column_config={
-        "name": "Product Name",
-        "amount": st.column_config.NumberColumn("Total Amount", step=0.01),
-        "price": st.column_config.ProgressColumn(
-            "Price (€)",
-            format="euro",
-            help="Visualize the price as a progress bar if available",
-        ),
-        "unit": "Unit",
-        "receipt_number": "Receipt Number",
-        "receipt_url": st.column_config.LinkColumn("🔍 Rechnung", display_text="Edit"),
+        key: val for key, val in column_config.items() if key in filtered.columns
     },
     column_order=[
         col for col in df.columns if col not in ["id", "receipt_id", "is_credit"]

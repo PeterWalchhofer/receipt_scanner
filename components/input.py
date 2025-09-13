@@ -60,7 +60,9 @@ def get_receipt_inputs(receipt: ReceiptDB, receipt_id: int = 0):
     source = st.selectbox(
         "Source",
         options=source_options,
-        index=source_options.index(ReceiptSource.RECEIPT_SCANNER.value),
+        index=source_options.index(ReceiptSource.RECEIPT_SCANNER.value)
+        if not hasattr(receipt, "source") or not receipt.source
+        else source_options.index(receipt.source),
         key=f"source_{receipt_id}",
     )
 

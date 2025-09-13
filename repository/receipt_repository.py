@@ -53,7 +53,19 @@ class ReceiptDB(Base):
     is_bio = Column(Boolean, default=False)
     file_paths = Column(JSON)  # Store multiple image paths
     source = Column(String, default=ReceiptSource.RECEIPT_SCANNER.value)
-    
+
+    def should_have_products(self):
+        """Determine if a receipt should contain products based on its attributes."""
+        # No "kemmts eina" because we do it at the end of the year
+        bio_ausgabe = not self.is_credit and self.is_bio
+        verkauf_käse = self.is_credit and self.company_name in [
+            "Hofladen",
+            "Wochenmarkt",
+            "Kemmts Eina",
+        ]
+        rechnungs_app = self.source == ReceiptSource.RECHNUNGSAPP.value
+
+        return bio_ausgabe or verkauf_käse or rechnungs_app
 
 
 # Product Table

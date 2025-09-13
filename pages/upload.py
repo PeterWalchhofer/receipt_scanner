@@ -83,7 +83,7 @@ st.write("Upload a receipt image or capture one with your smartphone.")
 
 uploaded_files = st.file_uploader(
     "Choose a receipt image",
-    type=["jpg", "jpeg", "png", ".HEIC", "pdf"],
+    type=["jpg", "jpeg", "png", ".HEIC", "pdf", ".PDF"],
     accept_multiple_files=True,
     key=f"uploader_{st.session_state.uploader_key}",
 )
@@ -212,13 +212,7 @@ with col_2:
             st.success("Receipt data saved successfully!")
 
 created_receipt = st.session_state.created_receipt
-allow_products = created_receipt and (
-    (created_receipt.is_bio and not created_receipt.is_credit)
-    or (
-        created_receipt.is_credit
-        and created_receipt.company_name in ["Kemmts Eina", "Marktwagen", "Hofladen"]
-    )
-)
+allow_products = created_receipt and created_receipt.should_have_products()
 
 if allow_products and created_receipt:
     st.markdown("---")

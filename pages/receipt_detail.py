@@ -103,14 +103,7 @@ if receipt_id:
 st.markdown("---")
 st.subheader("Products")
 # Only show product UI for relevant receipts
-show_products = (
-    receipt
-    and (receipt.is_bio and not receipt.is_credit)
-    or (
-        receipt.is_credit
-        and receipt.company_name in ["Hofladen", "Kemmts Eina", "Wochenmarkt"]
-    )
-)
+show_products = receipt.should_have_products()
 if not show_products:
     st.warning(
         "Produkt nur für Bioausgaben und Kaseinnahmen. Drücke Rechnung speichern, falls du die Angabe aktualisiert hast."
