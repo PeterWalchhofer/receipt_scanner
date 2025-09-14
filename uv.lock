@@ -713,7 +713,7 @@ requires-dist = [
     { name = "pillow-heif", specifier = ">=0.22.0" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "sqlalchemy", specifier = ">=2.0.39" },
-    { name = "streamlit", specifier = ">=1.43.1" },
+    { name = "streamlit", specifier = ">=1.47.1" },
     { name = "streamlit-pdf-viewer", specifier = ">=0.0.21" },
 ]
 
@@ -851,7 +851,7 @@ wheels = [
 
 [[package]]
 name = "streamlit"
-version = "1.43.1"
+version = "1.47.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "altair" },
@@ -873,9 +873,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "watchdog", marker = "sys_platform != 'darwin'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/48/a6/4806b73a5296961f7654a3426496bd463f2b92f6e1b75c359e29317e7a15/streamlit-1.43.1.tar.gz", hash = "sha256:4bb1e1235f6d84c279da567bf314f6e12310d53f1fb2350176ee462e189baebb", size = 9344698 }
+sdist = { url = "https://files.pythonhosted.org/packages/19/da/cef67ed4614f04932a00068fe6291455deb884a04fd94f7ad78492b0e91a/streamlit-1.47.1.tar.gz", hash = "sha256:daed79763d1cafeb03cdd800b91aa9c7adc3688c6b2cbf4ecc2ca899aab82a2a", size = 9544057 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bf/14/a95ac354fe9ca59ee9d030dc738dac8ac04bd32f9d7c3f2c790eb6431ab1/streamlit-1.43.1-py2.py3-none-any.whl", hash = "sha256:ed8a6bd01e2b087e25b1b534835a341c2f71964822ac94b065c5496d2b5b49c2", size = 9734547 },
+    { url = "https://files.pythonhosted.org/packages/c0/4d/701f5fcf9c0d388dad9d94ba272d333c7efa6231ddee1babc59d26dc14d2/streamlit-1.47.1-py3-none-any.whl", hash = "sha256:c7881549e3ba1daecfb5541f32ee6ff70e549f1c3400c92d045897cb7a29772a", size = 9944872 },
 ]
 
 [[package]]

@@ -10,15 +10,24 @@ from PIL import Image, ImageOps
 from streamlit_pdf_viewer import pdf_viewer
 
 from components.input import get_receipt_inputs
+from components.product_db_ops import get_products_for_receipt
+from components.product_grid import product_grid_ui
 from models.receipt import Receipt
 from receipt_parser.llm import Prompt, get_prompt, query_openai
-from repository.receipt_repository import ReceiptDB, ReceiptRepository
+from repository.receipt_repository import (
+    ProductDB,
+    ReceiptDB,
+    ReceiptRepository,
+    SessionLocal,
+)
 
 
 # Initialize session state for extracted data
 def init_session_state():
     default_values = {
         "extracted_data": None,
+        "products": None,
+        "created_receipt": None,
         "receipt_date": "",
         "receipt_number": "",
         "sum_gross": "",
@@ -53,7 +62,11 @@ def extract_data_mock(file_paths, prompt_type, custom_prompt=None):
 
 def extract_data(file_paths, prompt_type, custom_prompt=None):
     response = query_openai(get_prompt(file_paths, prompt_type, custom_prompt))
-    json_dict = json.loads(response)
+    try:
+        json_dict = json.loads(response)
+    except json.JSONDecodeError:
+        print("Failed to decode JSON response", response)
+        return {}
     return json_dict
 
 
@@ -70,7 +83,7 @@ st.write("Upload a receipt image or capture one with your smartphone.")
 
 uploaded_files = st.file_uploader(
     "Choose a receipt image",
-    type=["jpg", "jpeg", "png", ".HEIC", "pdf"],
+    type=["jpg", "jpeg", "png", ".HEIC", "pdf", ".PDF"],
     accept_multiple_files=True,
     key=f"uploader_{st.session_state.uploader_key}",
 )
@@ -129,14 +142,36 @@ if st.session_state.file_paths and st.button("Extract Receipt Data"):
     )
     receipt = Receipt(**extracted_data)  # Save the image path with the extracted data
     st.session_state.extracted_data = receipt
+    st.session_state.products = receipt.products
 
 with col_2:
     # Editable fields for the extracted data
     if st.session_state.extracted_data:
         st.subheader("Edit Extracted Data")
+
         inputs = get_receipt_inputs(
-            ReceiptDB(**st.session_state.extracted_data.__dict__)
+            ReceiptDB(
+                receipt_number=st.session_state.extracted_data.receipt_number,
+                date=st.session_state.extracted_data.date,
+                total_gross_amount=st.session_state.extracted_data.total_gross_amount,
+                total_net_amount=st.session_state.extracted_data.total_net_amount,
+                vat_amount=st.session_state.extracted_data.vat_amount,
+                company_name=st.session_state.extracted_data.company_name,
+                description=st.session_state.extracted_data.description,
+                is_credit=st.session_state.extracted_data.is_credit,
+                file_paths=st.session_state.file_paths,
+            )
         )
+        allow_products_unsaved = (
+            not st.session_state.created_receipt
+            and (inputs["is_bio"] and not inputs["is_credit"])
+            or (
+                inputs["is_credit"]
+                and inputs["company_name"] in ["Kemmts Eina", "Marktwagen", "Hofladen"]
+            )
+        )
+        if allow_products_unsaved:
+            st.badge("To add products save first", icon="ℹ️")
 
         if st.button("Save to Database"):
             # Update the extracted data with user inputs
@@ -154,11 +189,50 @@ with col_2:
                 is_bio=inputs["is_bio"],
             )
             # Save updated receipt to the database
-            receipt_repo.create_receipt(updated_receipt)
+            created_receipt = receipt_repo.create_receipt(updated_receipt)
+            st.session_state.created_receipt = created_receipt
+            # Save extracted products to DB if any
+            if st.session_state.products:
+                for p in st.session_state.products:
+                    p_db = ProductDB(
+                        receipt_id=created_receipt.id,
+                        name=p.name,
+                        amount=p.amount,
+                        price=p.price,
+                        is_bio=inputs["is_bio"],
+                        unit=p.unit,
+                        bio_category=p.bio_category,
+                    )
+                    with SessionLocal() as session:
+                        session.add(p_db)
+                        session.commit()
+            st.session_state.products = None  # Clear extracted products after saving
             st.success("Receipt data saved successfully!")
-            # Clear session state after saving
-            st.session_state.extracted_data = None
-            st.session_state.file_paths = []
-            st.session_state.uploader_key += 1
-            # reload
-            st.rerun()
+
+created_receipt = st.session_state.created_receipt
+allow_products = created_receipt and created_receipt.should_have_products()
+
+if allow_products and created_receipt:
+    st.markdown("---")
+    st.subheader("Products")
+    # Only show products from DB after save
+    products_db = get_products_for_receipt(created_receipt.id)
+    product_grid_ui(
+        receipt_id=created_receipt.id,
+        is_bio=created_receipt.is_bio,
+        products=products_db,
+        prefix="upload_",
+        show_price=True,
+    )
+
+if (created_receipt and not allow_products) or (
+    created_receipt and st.button("Upload new receipt")
+):
+    # Clear session state after saving
+    st.session_state.extracted_data = None
+    st.session_state.products = None
+    st.session_state.file_paths = []
+    st.session_state.created_receipt = None
+    st.session_state.uploader_key += 1
+    # reload
+    st.rerun()

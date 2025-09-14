@@ -11,6 +11,6 @@ dependencies = [
     "pillow-heif>=0.22.0",
     "pydantic>=2.10.6",
     "sqlalchemy>=2.0.39",
-    "streamlit>=1.43.1",
+    "streamlit>=1.47.1",
     "streamlit-pdf-viewer>=0.0.21",
 ]
