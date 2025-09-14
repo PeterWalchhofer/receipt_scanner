@@ -1,10 +1,7 @@
-import itertools
-import random
 from urllib.parse import quote_plus
 
 import pandas as pd
 import streamlit as st
-from matplotlib import cm
 from sqlalchemy import or_
 
 from models.receipt import ReceiptSource
