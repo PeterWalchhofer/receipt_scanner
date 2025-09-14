@@ -18,9 +18,10 @@ client = OpenAI()
 
 class Prompt(Enum):
     DEFAULT = "Standard"
-    WOCHENMARKT = "Wochenmarkt"
-    KEMMTS_EINA = "Kemmts Eina"
+    WOCHENMARKT = "Wochenmarkt (Einnahme)"
+    KEMMTS_EINA = "Kemmts Eina (Einnahme)"
     CUSTOM = "Manuelle Eingabe"
+    PRODUCTS_ONLY = "Nur Produkte extrahieren"
 
 
 def encode_image(img):
@@ -51,6 +52,11 @@ def get_prompt_text(prompt_type, custom_prompt=None):
         return (
             "Extract: Receipt number, Date, Total gross amount, total net amount, VAT amount, company name, description, is_credit, and a list of products. "
             + " Note: This is a receipt from our local market, hence is_credit is true. The company name is 'Kemmts Eina'. The VAT is 10% from the GROSS amount. Extract all the products that are listed."
+        )
+    if prompt_type == Prompt.PRODUCTS_ONLY:
+        return (
+            "Ignore: Receipt number, Date, Total gross amount, total net amount, VAT amount, company name, description, is_credit, and a extract ONLY the list of products. "
+            + " Note: Here we only want to extract the products from the receipt."
         )
     return "Extract: Receipt number, Date, Total gross amount, total net amount, VAT amount, company name, description, is_credit, and a list of products. "
 
@@ -94,7 +100,7 @@ def get_prompt(
                 "If some of the articles are crossed out, ignore them and adapt the total amounts."
                 "The products should only be extracted if the following conditions are met: "
                 "1. The receipt is relevant for organic monitoring (is_bio is true, and is_credit is false). "
-                "2. The receipt lists sold cheese products (only if is_credit is true). Leav bio_category empty."
+                "2. The receipt lists sold cheese products (only if is_credit is true). Leave bio_category empty."
                 "Leave the products empty if the receipt is not relevant for organic monitoring or does not list sold cheese products.",
             },
             {

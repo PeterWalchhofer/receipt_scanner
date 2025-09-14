@@ -1,3 +1,5 @@
+import json
+
 import streamlit as st
 from PIL import Image, ImageOps
 from streamlit_pdf_viewer import pdf_viewer
@@ -5,6 +7,9 @@ from streamlit_pdf_viewer import pdf_viewer
 from components.input import get_receipt_inputs
 from components.product_grid import product_grid_ui
 from models.product import BioCategory, ProductUnit
+from models.receipt import Receipt
+from pages.upload import extract_data
+from receipt_parser.llm import Prompt
 from repository.receipt_repository import (
     ProductDB,
     ReceiptDB,
@@ -37,12 +42,9 @@ if receipt_id:
         # Load images when expanded
         if (
             receipt
-            and hasattr(receipt, "file_paths")
             and receipt.file_paths is not None
         ):
             # SQLAlchemy may return a JSON column as a string, so parse if needed
-            import json
-
             file_paths = receipt.file_paths
             if isinstance(file_paths, str):
                 try:
@@ -88,7 +90,7 @@ if receipt_id:
                     comment=inputs["comment"],
                     is_credit=inputs["is_credit"],
                     is_bio=inputs["is_bio"],
-                    file_paths=getattr(receipt, "file_paths", []),
+                    file_paths=receipt.file_paths,
                     source=inputs["source"],
                 )
                 receipt_repo.update_receipt(receipt_id, updated_receipt)
@@ -108,11 +110,35 @@ if not show_products:
     st.warning(
         "Produkt nur für Bioausgaben und Kaseinnahmen. Drücke Rechnung speichern, falls du die Angabe aktualisiert hast."
     )
+
 if show_products:
     with SessionLocal() as session:
         products = (
             session.query(ProductDB).filter(ProductDB.receipt_id == receipt_id).all()
         )
+    if not products:
+        if st.button("Extract Products"):
+            extracted_data = extract_data(
+                receipt.file_paths, Prompt.PRODUCTS_ONLY, None
+            )
+            receipt = Receipt(**extracted_data)
+            products = receipt.products
+            if products:
+                for p in products:
+                    p_db = ProductDB(
+                        receipt_id=receipt_id,
+                        name=p.name,
+                        amount=p.amount,
+                        price=p.price,
+                        is_bio=inputs["is_bio"],
+                        unit=p.unit,
+                        bio_category=p.bio_category,
+                    )
+                    with SessionLocal() as session:
+                        session.add(p_db)
+                        session.commit()
+
+                st.rerun()
     product_grid_ui(
         receipt_id=receipt_id,
         is_bio=inputs["is_bio"],

@@ -38,21 +38,21 @@ Base.metadata.create_all(bind=engine)
 
 class ReceiptDB(Base):
     __tablename__ = "receipts"
-    created_on = Column(DateTime(timezone=True), server_default=func.now())
-    updated_on = Column(DateTime(timezone=True), onupdate=func.now())
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    receipt_number = Column(String, index=True)
-    date = Column(String)
-    total_gross_amount = Column(Float)
-    total_net_amount = Column(Float)
-    vat_amount = Column(Float)
-    company_name = Column(String)
-    description = Column(String)
-    comment = Column(String)
-    is_credit = Column(Boolean, default=False)
-    is_bio = Column(Boolean, default=False)
-    file_paths = Column(JSON)  # Store multiple image paths
-    source = Column(String, default=ReceiptSource.RECEIPT_SCANNER.value)
+    created_on: datetime = Column(DateTime(timezone=True), server_default=func.now())
+    updated_on: datetime = Column(DateTime(timezone=True), onupdate=func.now())
+    id: str = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    receipt_number: str = Column(String, index=True)
+    date: str = Column(String)
+    total_gross_amount: float = Column(Float)
+    total_net_amount: float = Column(Float)
+    vat_amount: float = Column(Float)
+    company_name: str = Column(String)
+    description: str | None = Column(String)
+    comment: str | None = Column(String)
+    is_credit: bool = Column(Boolean, default=False)
+    is_bio: bool = Column(Boolean, default=False)
+    file_paths: list[str] = Column(JSON)  # Store multiple image paths
+    source: str = Column(String, default=ReceiptSource.RECEIPT_SCANNER.value)
 
     def should_have_products(self):
         """Determine if a receipt should contain products based on its attributes."""
@@ -71,16 +71,18 @@ class ReceiptDB(Base):
 # Product Table
 class ProductDB(Base):
     __tablename__ = "products"
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    receipt_id = Column(String, ForeignKey("receipts.id"), nullable=False, index=True)
-    name = Column(String, nullable=False)
-    is_bio = Column(Boolean, nullable=False)
-    bio_category = Column(SAEnum(BioCategory), nullable=True)
-    amount = Column(Float, nullable=False)
-    price = Column(Float, nullable=True)
-    unit = Column(SAEnum(ProductUnit), nullable=False)
-    created_on = Column(DateTime(timezone=True), server_default=func.now())
-    updated_on = Column(DateTime(timezone=True), onupdate=func.now())
+    id: str = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    receipt_id: str = Column(
+        String, ForeignKey("receipts.id"), nullable=False, index=True
+    )
+    name: str | None = Column(String, nullable=True)
+    is_bio: bool | None = Column(Boolean, nullable=True)
+    bio_category: BioCategory | None = Column(SAEnum(BioCategory), nullable=True)
+    amount: float | None = Column(Float, nullable=True)
+    price: float | None = Column(Float, nullable=True)
+    unit: ProductUnit | None = Column(SAEnum(ProductUnit), nullable=True)
+    created_on: datetime = Column(DateTime(timezone=True), server_default=func.now())
+    updated_on: datetime = Column(DateTime(timezone=True), onupdate=func.now())
 
 
 class ReceiptRepository:

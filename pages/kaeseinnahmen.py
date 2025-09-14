@@ -5,7 +5,9 @@ from urllib.parse import quote_plus
 import pandas as pd
 import streamlit as st
 from matplotlib import cm
+from sqlalchemy import or_
 
+from models.receipt import ReceiptSource
 from pages.utils import highlight_url
 from repository.receipt_repository import ProductDB, ReceiptDB, SessionLocal
 
@@ -19,10 +21,16 @@ with SessionLocal() as session:
         .join(ReceiptDB, ProductDB.receipt_id == ReceiptDB.id)
         .filter(
             ReceiptDB.is_credit == True,
-            ReceiptDB.company_name.in_(KAESEINNAHMEN_COMPANIES),
+            or_(
+                ReceiptDB.company_name.in_(KAESEINNAHMEN_COMPANIES),
+                ReceiptDB.source == ReceiptSource.RECHNUNGSAPP,
+            ),
         )
     )
     all_rows = query.all()
+    if not all_rows:
+        st.info("No products found.")
+        st.stop()
     data = []
     for prod, rec in all_rows:
         data.append(

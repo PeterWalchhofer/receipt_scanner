@@ -19,6 +19,9 @@ with SessionLocal() as session:
         )
     )
     all_rows = query.all()
+    if not all_rows:
+        st.info("No products found.")
+        st.stop()
     data = []
     for prod, rec in all_rows:
         data.append(

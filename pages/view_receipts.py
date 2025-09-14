@@ -27,14 +27,14 @@ def get_cached_receipts():
     return receipt_repo.get_all_receipts()
 
 
-def verify_product_in_receipt(receipt: ReceiptDB, product_dict: dict):
+def receipt_has_missing_products(receipt: ReceiptDB, product_dict: dict):
     """Determine if a receipt should contain products based on its attributes."""
     # No "kemmts eina" because we do it at the end of the year
     should_contain_product = receipt.should_have_products()
     if receipt.company_name == "Kemmts Eina" and receipt.is_credit:
         should_contain_product = False
     does_contain = receipt.id in product_dict
-    return (should_contain_product and does_contain) or (not should_contain_product)
+    return not (should_contain_product and does_contain) or (not should_contain_product)
 
 
 # Fetch all receipts (cached)
@@ -54,7 +54,7 @@ if receipts:
     ]  # Clickable links
     df["progress"] = df["total_gross_amount"]
     df["source"] = [getattr(r, "source", "RECEIPT_SCANNER") for r in receipts]
-    df["products"] = [verify_product_in_receipt(r, products_count) for r in receipts]
+    df["products"] = [receipt_has_missing_products(r, products_count) for r in receipts]
 
     # --- Filter UI ---
     st.sidebar.header("Filter Receipts")
@@ -71,6 +71,11 @@ if receipts:
     company_filter = st.sidebar.selectbox("Company", options=company_options, index=0)
     products_filter = st.sidebar.selectbox(
         "Missing Products", options=["All", True, False], index=0
+    )
+    source_filter = st.sidebar.selectbox(
+        "Quelle",
+        options=["All"] + sorted(df["source"].dropna().unique().tolist()),
+        index=0,
     )
     filtered_df = df.copy()
     if is_credit_filter != "All":
@@ -90,6 +95,8 @@ if receipts:
 
     if products_filter != "All":
         filtered_df = filtered_df[filtered_df["products"] == products_filter]
+    if source_filter != "All":
+        filtered_df = filtered_df[filtered_df["source"] == source_filter]
     main_cols = [
         "date",
         "company_name",

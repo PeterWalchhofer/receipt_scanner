@@ -143,8 +143,6 @@ if st.session_state.file_paths and st.button("Extract Receipt Data"):
     receipt = Receipt(**extracted_data)  # Save the image path with the extracted data
     st.session_state.extracted_data = receipt
     st.session_state.products = receipt.products
-    print(">>>>>>>>>")
-    print("products", st.session_state.products)
 
 with col_2:
     # Editable fields for the extracted data
