@@ -13,7 +13,7 @@ st.title("Import Rechnungsapp ZIP")
 receipt_repo = ReceiptRepository()
 # add info text for this page
 st.info("""
-Go to Kalkül -> Export -> Set the time range and check "Rechnungen" option -> Herunterladen
+Go to Kalkül -> Check if all receipts are "abgeschlossen" -> Settings -> Export -> Set the time range and check "Rechnungen" option -> Herunterladen
 """)
 uploaded_zip = st.file_uploader("Upload ZIP file from Kalkül", type=["zip"])
 
