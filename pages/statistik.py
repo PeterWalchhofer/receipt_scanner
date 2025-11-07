@@ -45,7 +45,8 @@ bar_chart = (
         color=alt.Color(
             "Type",
             scale=alt.Scale(
-                domain=["Income", "Expanse", "Gewinn"], range=["green", "red", "darkgreen"]
+                domain=["Income", "Expanse", "Gewinn"],
+                range=["green", "red", "darkgreen"],
             ),
             legend=None,
         ),
@@ -159,3 +160,20 @@ location_chart = (
     .properties(title="Einkommen nach Verkaufsort")
 )
 st.altair_chart(location_chart, use_container_width=True)
+
+K2 = st.number_input(
+    "Number of top companies to show (income)",
+    min_value=1,
+    max_value=20,
+    value=5,
+    step=1,
+)
+income_companies = (
+    income_df[income_df["location"] == "Other"]
+    .groupby("company_name")["total_net_amount"]
+    .sum()
+    .sort_values(ascending=False)
+    .head(int(K2))
+)
+st.write(f"Top {int(K2)} companies where income were made (by total net amount):")
+st.table(income_companies)
