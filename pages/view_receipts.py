@@ -210,5 +210,112 @@ if receipts:
             "application/zip",
         )
 
+    st.subheader("Export Steuerberaterin")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Date picker for filtering by created_on
+        min_created_date = st.date_input(
+            "Receipts created since",
+            value=None,
+            help="Export receipts created on or after this date.",
+        )
+
+    with col2:
+        # Date picker for filtering by receipt date
+        min_receipt_date = st.date_input(
+            "Receipt date from (inclusive)",
+            value=None,
+            help="Export receipts with a receipt date on or after this date.",
+        )
+    if st.button("Export Steuerberaterin CSV"):
+        col_rename_mapping = {
+            "date": "Datum",
+            "company_name": "Unternehmen",
+            "is_credit": "Einnahme",
+            "total_gross_amount": "Brutto",
+            "total_net_amount": "Netto",
+            "vat_amount": "USt.",
+            "description": "Beschreibung",
+            "comment": "Kommentar",
+        }
+
+        # Filter by created_on date and/or receipt date
+        df_to_export = df.copy()
+
+        if min_created_date or min_receipt_date:
+            df_to_export["created_on"] = pd.to_datetime(df_to_export["created_on"])
+            df_to_export["date"] = pd.to_datetime(df_to_export["date"], format="mixed")
+
+            # Create filter conditions
+            conditions = []
+
+            if min_created_date:
+                conditions.append(
+                    df_to_export["created_on"].dt.date >= min_created_date
+                )
+
+            if min_receipt_date:
+                conditions.append(df_to_export["date"].dt.date >= min_receipt_date)
+
+            # Combine conditions with OR logic
+            if len(conditions) == 2:
+                combined_filter = conditions[0] | conditions[1]
+            else:
+                combined_filter = conditions[0]
+
+            df_to_export = df_to_export[combined_filter]
+
+            # Build info message
+            filter_info = []
+            if min_created_date:
+                filter_info.append(f"created since {min_created_date}")
+            if min_receipt_date:
+                filter_info.append(f"receipt date >= {min_receipt_date}")
+
+            st.info(
+                f"Exporting {len(df_to_export)} receipts ({' OR '.join(filter_info)})"
+            )
+        else:
+            st.info(f"Exporting all {len(df_to_export)} receipts")
+
+        df_export = (
+            df_to_export[list(col_rename_mapping.keys())]
+            .rename(columns=col_rename_mapping)
+            .sort_values("Datum")
+        )
+        df_einnahmen = df_export[df_export["Einnahme"]]
+        df_ausgaben = df_export[~df_export["Einnahme"]]
+
+        # Drop Einnahme column for export
+        df_einnahmen = df_einnahmen.drop(columns="Einnahme")
+        df_ausgaben = df_ausgaben.drop(columns="Einnahme")
+
+        # Export to Excel in-memory
+        excel_einnahmen = io.BytesIO()
+        with pd.ExcelWriter(excel_einnahmen, engine="xlsxwriter") as writer:
+            df_einnahmen.to_excel(writer, index=False, sheet_name="Einnahmen")
+        excel_einnahmen.seek(0)
+
+        excel_ausgaben = io.BytesIO()
+        with pd.ExcelWriter(excel_ausgaben, engine="xlsxwriter") as writer:
+            df_ausgaben.to_excel(writer, index=False, sheet_name="Ausgaben")
+        excel_ausgaben.seek(0)
+
+        st.download_button(
+            "📥 Download Ausgaben Excel",
+            excel_ausgaben.getvalue(),
+            "receipt_ausgaben.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        st.download_button(
+            "📥 Download Einnahmen Excel",
+            excel_einnahmen.getvalue(),
+            "receipts_einnahmen.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+
 else:
     st.write("No receipts found.")
