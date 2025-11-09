@@ -40,10 +40,7 @@ if receipt_id:
     col_1, col_2 = st.columns(2)
     with col_1:
         # Load images when expanded
-        if (
-            receipt
-            and receipt.file_paths is not None
-        ):
+        if receipt and receipt.file_paths is not None:
             # SQLAlchemy may return a JSON column as a string, so parse if needed
             file_paths = receipt.file_paths
             if isinstance(file_paths, str):
@@ -54,23 +51,21 @@ if receipt_id:
             if not isinstance(file_paths, list):
                 file_paths = []
             st.markdown("### Receipt Images")
-            columns = st.columns(len(file_paths))
-            for i, file_path in enumerate(file_paths):
-                with columns[i]:
-                    if file_path.endswith(".pdf"):
-                        pdf_viewer(file_path)
-                    else:
-                        try:
-                            img = Image.open(file_path)
-                            img = ImageOps.exif_transpose(img)
-                            if img is not None:
-                                st.image(
-                                    img,
-                                    caption="Receipt Image",
-                                    use_container_width=True,
-                                )
-                        except Exception:
-                            st.warning(f"Could not load image: {file_path}")
+            for file_path in file_paths:
+                if file_path.endswith(".pdf"):
+                    pdf_viewer(file_path)
+                else:
+                    try:
+                        img = Image.open(file_path)
+                        img = ImageOps.exif_transpose(img)
+                        if img is not None:
+                            st.image(
+                                img,
+                                caption="Receipt Image",
+                                use_container_width=True,
+                            )
+                    except Exception:
+                        st.warning(f"Could not load image: {file_path}")
     with col_2:
         inputs = get_receipt_inputs(
             receipt, receipt_id if receipt_id is not None else 0
