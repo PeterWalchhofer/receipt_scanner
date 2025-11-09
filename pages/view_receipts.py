@@ -213,7 +213,7 @@ if receipts:
 
     st.subheader("Export Steuerberaterin")
 
-    col1, col2 = st.columns(2)
+    col1, col2, col_3 = st.columns(3)
 
     with col1:
         # Date picker for filtering by created_on
@@ -229,6 +229,12 @@ if receipts:
             "Receipt date from (inclusive)",
             value=None,
             help="Export receipts with a receipt date on or after this date.",
+        )
+    with col_3:
+        max_receipt_date = st.date_input(
+            "Receipt date to (inclusive)",
+            value=None,
+            help="Export receipts with a receipt date on or before this date.",
         )
     if st.button("Export Steuerberaterin CSV"):
         col_rename_mapping = {
@@ -246,7 +252,7 @@ if receipts:
         # Filter by created_on date and/or receipt date
         df_to_export = df.copy()
 
-        if min_created_date or min_receipt_date:
+        if min_created_date or min_receipt_date or max_receipt_date:
             df_to_export["created_on"] = pd.to_datetime(df_to_export["created_on"])
             df_to_export["date"] = pd.to_datetime(df_to_export["date"], format="mixed")
 
@@ -267,18 +273,9 @@ if receipts:
             else:
                 combined_filter = conditions[0]
 
-            df_to_export = df_to_export[combined_filter]
-
-            # Build info message
-            filter_info = []
-            if min_created_date:
-                filter_info.append(f"created since {min_created_date}")
-            if min_receipt_date:
-                filter_info.append(f"receipt date >= {min_receipt_date}")
-
-            st.info(
-                f"Exporting {len(df_to_export)} receipts ({' OR '.join(filter_info)})"
-            )
+            df_to_export = df_to_export[combined_filter] if not max_receipt_date else df_to_export[
+                (combined_filter) & (df_to_export["date"].dt.date <= max_receipt_date)
+            ]
         else:
             st.info(f"Exporting all {len(df_to_export)} receipts")
 
