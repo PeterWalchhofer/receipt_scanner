@@ -66,6 +66,19 @@ if receipt_id:
                             )
                     except Exception:
                         st.warning(f"Could not load image: {file_path}")
+                
+                # Add download button for each file
+                try:
+                    with open(file_path, "rb") as file:
+                        file_name = file_path.split("/")[-1]
+                        st.download_button(
+                            label=f"Download {file_name}",
+                            data=file,
+                            file_name=file_name,
+                            mime="application/pdf" if file_path.endswith(".pdf") else "image/jpeg",
+                        )
+                except Exception:
+                    st.warning(f"Could not create download button for: {file_path}")
     with col_2:
         inputs = get_receipt_inputs(
             receipt, receipt_id if receipt_id is not None else 0
