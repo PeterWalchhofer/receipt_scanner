@@ -51,7 +51,7 @@ if receipt_id:
             if not isinstance(file_paths, list):
                 file_paths = []
             st.markdown("### Receipt Images")
-            for file_path in file_paths:
+            for i, file_path in enumerate(file_paths):
                 if file_path.endswith(".pdf"):
                     pdf_viewer(file_path)
                 else:
@@ -72,7 +72,7 @@ if receipt_id:
                     with open(file_path, "rb") as file:
                         file_name = file_path.split("/")[-1]
                         st.download_button(
-                            label=f"Download {file_name}",
+                            label=f"Download File {i}",
                             data=file,
                             file_name=file_name,
                             mime="application/pdf" if file_path.endswith(".pdf") else "image/jpeg",
