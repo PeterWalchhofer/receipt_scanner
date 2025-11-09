@@ -8,3 +8,16 @@ def highlight_url(row):
     color = f"rgb({one_to_255}, {one_to_255}, {one_to_255})"
 
     return [f"background-color: {color}" for _ in row]
+
+
+def get_location(row):
+    if row["company_name"] == "Marktwagen":
+        return "Marktwagen"
+    elif row["company_name"] == "Kemmts Eina":
+        return "Kemmts Eina"
+    elif row["source"] == "RECHNUNGSAPP":
+        return "Lieferungen"
+    elif row["source"] == "REGISTRIERKASSA":
+        return "Hofladen"
+    else:
+        return "Other"

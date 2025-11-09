@@ -9,6 +9,7 @@ from streamlit_pdf_viewer import pdf_viewer
 
 from components.input import get_receipt_inputs
 from components.product_db_ops import get_products_counts
+from pages.utils import get_location
 from repository.receipt_repository import ReceiptDB, ReceiptRepository
 
 # Initialize the database connection
@@ -239,6 +240,7 @@ if receipts:
             "vat_amount": "USt.",
             "description": "Beschreibung",
             "comment": "Kommentar",
+            "location": "Verkaufsort",
         }
 
         # Filter by created_on date and/or receipt date
@@ -280,6 +282,8 @@ if receipts:
         else:
             st.info(f"Exporting all {len(df_to_export)} receipts")
 
+        # Aggregat einnahmen
+        df_to_export["location"] = df_to_export.apply(get_location, axis=1)
         df_export = (
             df_to_export[list(col_rename_mapping.keys())]
             .rename(columns=col_rename_mapping)
@@ -290,6 +294,9 @@ if receipts:
 
         # Drop Einnahme column for export
         df_einnahmen = df_einnahmen.drop(columns="Einnahme")
+        df_einnahmen_agg = df_einnahmen.groupby("Verkaufsort")[
+            ["USt.", "Netto", "Brutto"]
+        ].sum()
         df_ausgaben = df_ausgaben.drop(columns="Einnahme")
 
         # Export to Excel in-memory
@@ -297,6 +304,11 @@ if receipts:
         with pd.ExcelWriter(excel_einnahmen, engine="xlsxwriter") as writer:
             df_einnahmen.to_excel(writer, index=False, sheet_name="Einnahmen")
         excel_einnahmen.seek(0)
+
+        excel_einnahmen_aggregiert = io.BytesIO()
+        with pd.ExcelWriter(excel_einnahmen_aggregiert, engine="xlsxwriter") as writer:
+            df_einnahmen_agg.to_excel(writer, index=True, sheet_name="Einnahmen")
+        excel_einnahmen_aggregiert.seek(0)
 
         excel_ausgaben = io.BytesIO()
         with pd.ExcelWriter(excel_ausgaben, engine="xlsxwriter") as writer:
@@ -313,6 +325,12 @@ if receipts:
             "📥 Download Einnahmen Excel",
             excel_einnahmen.getvalue(),
             "receipts_einnahmen.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        st.download_button(
+            "📥 Download Einnahmen Aggregiert Excel",
+            excel_einnahmen_aggregiert.getvalue(),
+            "receipts_einnahmen_agg.xlsx",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 

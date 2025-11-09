@@ -2,6 +2,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
+from pages.utils import get_location
 from repository.receipt_repository import ReceiptRepository
 
 st.title("📊 Statistik")
@@ -128,19 +129,6 @@ st.table(expanse_companies)
 
 # Section: Einnahmen
 st.header("Einnahmen")
-
-
-def get_location(row):
-    if row["company_name"] == "Marktwagen":
-        return "Marktwagen"
-    elif row["company_name"] == "Kemmts Eina":
-        return "Kemmts Eina"
-    elif row["source"] == "RECHNUNGSAPP":
-        return "Lieferungen"
-    elif row["source"] == "REGISTRIERKASSA":
-        return "Hofladen"
-    else:
-        return "Other"
 
 
 income_df = df[df["is_credit"]].copy()
