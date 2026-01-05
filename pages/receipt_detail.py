@@ -75,7 +75,9 @@ if receipt_id:
                             label=f"Download File {i}",
                             data=file,
                             file_name=file_name,
-                            mime="application/pdf" if file_path.endswith(".pdf") else "image/jpeg",
+                            mime="application/pdf"
+                            if file_path.endswith(".pdf")
+                            else "image/jpeg",
                         )
                 except Exception:
                     st.warning(f"Could not create download button for: {file_path}")
@@ -125,10 +127,17 @@ if show_products:
             session.query(ProductDB).filter(ProductDB.receipt_id == receipt_id).all()
         )
     if not products:
-        if st.button("Extract Products"):
-            extracted_data = extract_data(
-                receipt.file_paths, Prompt.PRODUCTS_ONLY, None
+        custom_prompt = st.text_area(
+                "Custom Prompt", 
+                key="custom_prompt",
             )
+        if st.button("Extract Products"):
+            extracted_data = (
+                extract_data(receipt.file_paths, Prompt.PRODUCTS_ONLY, None)
+                if not custom_prompt
+                else extract_data(receipt.file_paths, Prompt.CUSTOM, custom_prompt)
+            )
+
             receipt = Receipt(**extracted_data)
             products = receipt.products
             if products:

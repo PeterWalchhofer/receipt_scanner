@@ -39,7 +39,7 @@ def encode_pdf(pdf_path):
     return base64_images
 
 
-def get_prompt_text(prompt_type, custom_prompt=None):
+def     get_prompt_text(prompt_type, custom_prompt=None):
     if prompt_type == Prompt.CUSTOM:
         return custom_prompt
 
