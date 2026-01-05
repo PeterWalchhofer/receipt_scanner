@@ -12,7 +12,7 @@ from streamlit_pdf_viewer import pdf_viewer
 from components.input import get_receipt_inputs
 from components.product_db_ops import get_products_for_receipt
 from components.product_grid import product_grid_ui
-from models.receipt import Receipt
+from models.receipt import Receipt, ReceiptSource
 from receipt_parser.llm import Prompt, get_prompt, query_openai
 from repository.receipt_repository import (
     ProductDB,
@@ -160,6 +160,7 @@ with col_2:
                 description=st.session_state.extracted_data.description,
                 is_credit=st.session_state.extracted_data.is_credit,
                 file_paths=st.session_state.file_paths,
+                source=ReceiptSource.RECEIPT_SCANNER.value,
             )
         )
         allow_products_unsaved = (
@@ -187,6 +188,7 @@ with col_2:
                 file_paths=st.session_state.file_paths,
                 comment=inputs["comment"],
                 is_bio=inputs["is_bio"],
+                source=inputs["source"],
             )
             # Save updated receipt to the database
             created_receipt = receipt_repo.create_receipt(updated_receipt)

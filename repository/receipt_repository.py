@@ -61,6 +61,7 @@ class ReceiptDB(Base):
         verkauf_käse = self.is_credit and self.company_name in [
             "Hofladen",
             "Wochenmarkt",
+            "Marktwagen",
             "Kemmts Eina",
         ]
         rechnungs_app = self.source == ReceiptSource.RECHNUNGSAPP.value
