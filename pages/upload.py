@@ -60,8 +60,10 @@ def extract_data_mock(file_paths, prompt_type, custom_prompt=None):
     }
 
 
-def extract_data(file_paths, prompt_type, custom_prompt=None):
-    response = query_openai(get_prompt(file_paths, prompt_type, custom_prompt))
+def extract_data(file_paths, prompt_type, custom_prompt=None, img_scale_factor=1):
+    response = query_openai(
+        get_prompt(file_paths, prompt_type, custom_prompt, img_scale_factor)
+    )
     try:
         json_dict = json.loads(response)
     except json.JSONDecodeError:
@@ -136,9 +138,10 @@ if st.session_state.file_paths:
             key="custom_prompt",
         )
 
+high_res = st.toggle("High Resolution", value=False, key="high_res")
 if st.session_state.file_paths and st.button("Extract Receipt Data"):
     extracted_data = extract_data(
-        st.session_state.file_paths, Prompt(receipt_type), custom_prompt
+        st.session_state.file_paths, Prompt(receipt_type), custom_prompt, 2 if high_res else 1
     )
     receipt = Receipt(**extracted_data)  # Save the image path with the extracted data
     st.session_state.extracted_data = receipt

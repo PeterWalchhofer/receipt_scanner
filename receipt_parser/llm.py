@@ -24,18 +24,18 @@ class Prompt(Enum):
     PRODUCTS_ONLY = "Nur Produkte extrahieren"
 
 
-def encode_image(img):
+def encode_image(img, scale_factor):
     img = ImageOps.exif_transpose(img)
-    img.thumbnail((1920, 1080))
+    img.thumbnail((1920 * scale_factor, 1080 * scale_factor))
     buffered = BytesIO()
     img.save(buffered, format="JPEG")
     base64_img = base64.b64encode(buffered.getvalue()).decode("utf-8")
     return base64_img
 
 
-def encode_pdf(pdf_path):
+def encode_pdf(pdf_path, scale_factor):
     images = pdf2image.convert_from_path(pdf_path)
-    base64_images = [encode_image(img) for img in images]
+    base64_images = [encode_image(img, scale_factor) for img in images]
     return base64_images
 
 
@@ -62,10 +62,10 @@ def     get_prompt_text(prompt_type, custom_prompt=None):
 
 
 def get_prompt(
-    img_paths: list[str], prompt_type: Prompt, custom_prompt: str | None
+    img_paths: list[str], prompt_type: Prompt, custom_prompt: str | None, img_scale_factor=1
 ) -> dict:
     base64_images = [
-        encode_image(Image.open(img_path))
+        encode_image(Image.open(img_path), img_scale_factor)
         for img_path in img_paths
         if not img_path.endswith(".pdf")
     ]
@@ -73,7 +73,7 @@ def get_prompt(
         base64_image
         for pdf_path in img_paths
         if pdf_path.endswith(".pdf")
-        for base64_image in encode_pdf(pdf_path)
+        for base64_image in encode_pdf(pdf_path, img_scale_factor)
     ]
     print(get_prompt_text(prompt_type, custom_prompt))
     return {

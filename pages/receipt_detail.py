@@ -128,14 +128,21 @@ if show_products:
         )
     if not products:
         custom_prompt = st.text_area(
-                "Custom Prompt", 
-                key="custom_prompt",
-            )
+            "Custom Prompt",
+            key="custom_prompt",
+        )
+        high_res = st.toggle("High Resolution", value=False, key="high_res_detail")
+
         if st.button("Extract Products"):
+            scale_factor = 2 if high_res else 1
             extracted_data = (
-                extract_data(receipt.file_paths, Prompt.PRODUCTS_ONLY, None)
+                extract_data(
+                    receipt.file_paths, Prompt.PRODUCTS_ONLY, None, scale_factor
+                )
                 if not custom_prompt
-                else extract_data(receipt.file_paths, Prompt.CUSTOM, custom_prompt)
+                else extract_data(
+                    receipt.file_paths, Prompt.CUSTOM, custom_prompt, scale_factor
+                )
             )
 
             receipt = Receipt(**extracted_data)
