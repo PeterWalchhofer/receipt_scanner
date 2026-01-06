@@ -80,6 +80,8 @@ column_config = {
         "Price (€)",
         format="euro",
         help="Visualize the price as a progress bar if available",
+        min_value=0,
+        max_value=df["price"].max(),
     ),
     "unit": "Unit",
     "receipt_number": "Receipt Number",
