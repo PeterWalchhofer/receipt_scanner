@@ -8,7 +8,7 @@ from models.receipt import ReceiptSource
 from pages.utils import highlight_url
 from repository.receipt_repository import ProductDB, ReceiptDB, SessionLocal
 
-KAESEINNAHMEN_COMPANIES = ["Hofladen", "Kemmts Eina", "Wochenmarkt"]
+KAESEINNAHMEN_COMPANIES = ["Hofladen", "Kemmts Eina", "Wochenmarkt", "Marktwagen"]
 
 st.title("Käseinnahmen Produkte")
 
