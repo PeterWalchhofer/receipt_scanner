@@ -7,7 +7,7 @@ import re
 from typing import Optional
 
 import pandas as pd
-from repository.receipt_repository import ProductDB, RegexDB, SortimentDB, SessionLocal
+from repository.receipt_repository import ProductDB, RegexDB, SortimentDB, SessionLocal, ReceiptDB
 
 
 def match_regex_to_products(regex_pattern: str, products: list[ProductDB]) -> list[ProductDB]:
@@ -33,19 +33,23 @@ def get_unclassified_products(
     regex_id: Optional[str] = None,
 ) -> list[ProductDB]:
     """
-    Get all products with null product_class_reference.
+    Get all products with null product_class_reference that belong to receipts with is_credit=TRUE.
     Optionally filter by regex pattern if regex_id is provided.
     
     Args:
         regex_id: Optional RegexDB ID to apply regex matching
         
     Returns:
-        List of unclassified ProductDB objects
+        List of unclassified ProductDB objects with valid receipts and is_credit=TRUE
     """
     with SessionLocal() as session:
         unclassified = (
             session.query(ProductDB)
-            .filter(ProductDB.product_class_reference.is_(None))
+            .join(ReceiptDB, ProductDB.receipt_id == ReceiptDB.id)
+            .filter(
+                ProductDB.product_class_reference.is_(None),
+                ReceiptDB.is_credit == True
+            )
             .all()
         )
         

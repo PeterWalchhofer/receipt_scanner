@@ -262,9 +262,9 @@ def product_reference_page():
                 "Add some in the 'Add Regex' tab first."
             )
         else:
-            # Get all unclassified products
+            # Get all unclassified products with is_credit=TRUE
             unclassified = get_unclassified_products()
-            st.info(f"Total unclassified products: {len(unclassified)}")
+            st.info(f"Total unclassified products (with is_credit=TRUE): {len(unclassified)}")
             
             # Show preview of matching products
             st.subheader("Products that match this product class's regexes:")
