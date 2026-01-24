@@ -124,12 +124,12 @@ if aggregated:
     )
 
 # Assign a color to each unique receipt_url
+# Calculate max price for the progress bar BEFORE styling (handle NaN case)
+max_filtered_price = filtered["price"].max() if not filtered.empty else None
+max_filtered_price = max_filtered_price if pd.notna(max_filtered_price) and max_filtered_price > 0 else 1
+
 if not aggregated:
     filtered = filtered.style.apply(highlight_url, axis=1)
-
-# Calculate max price for the progress bar, handling NaN case
-max_filtered_price = filtered["price"].max() if len(filtered) > 0 else None
-max_filtered_price = max_filtered_price if pd.notna(max_filtered_price) and max_filtered_price > 0 else 1
 
 column_config = {
     "name": "Product Name",
