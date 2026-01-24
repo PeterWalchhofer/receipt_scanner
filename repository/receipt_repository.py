@@ -69,6 +69,27 @@ class ReceiptDB(Base):
         return bio_ausgabe or verkauf_käse or rechnungs_app
 
 
+# Sortiment Table
+class SortimentDB(Base):
+    __tablename__ = "sortiment"
+    id: str = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: str = Column(String, unique=True, nullable=False)
+    created_on: datetime = Column(DateTime(timezone=True), server_default=func.now())
+    updated_on: datetime = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+# Regex Table for product classification
+class RegexDB(Base):
+    __tablename__ = "regex"
+    id: str = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    regex: str = Column(String, nullable=False)
+    product_class_id: str = Column(
+        String, ForeignKey("sortiment.id"), nullable=False, index=True
+    )
+    created_on: datetime = Column(DateTime(timezone=True), server_default=func.now())
+    updated_on: datetime = Column(DateTime(timezone=True), onupdate=func.now())
+
+
 # Product Table
 class ProductDB(Base):
     __tablename__ = "products"
@@ -82,6 +103,9 @@ class ProductDB(Base):
     amount: float | None = Column(Float, nullable=True)
     price: float | None = Column(Float, nullable=True)
     unit: ProductUnit | None = Column(SAEnum(ProductUnit), nullable=True)
+    product_class_reference: str | None = Column(
+        String, ForeignKey("sortiment.id"), nullable=True, index=True
+    )
     created_on: datetime = Column(DateTime(timezone=True), server_default=func.now())
     updated_on: datetime = Column(DateTime(timezone=True), onupdate=func.now())
 

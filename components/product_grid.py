@@ -1,7 +1,7 @@
 import streamlit as st
 
 from components.input import get_product_inputs
-from repository.receipt_repository import ProductDB, SessionLocal
+from repository.receipt_repository import ProductDB, SessionLocal, SortimentDB
 
 
 def product_grid_ui(receipt_id, is_bio, products=None, prefix="", show_price=True):
@@ -74,6 +74,18 @@ def product_grid_ui(receipt_id, is_bio, products=None, prefix="", show_price=Tru
                             prefix=f"{prefix}edit_{item.id}_",
                             show_price=show_price,
                         )
+                        
+                        # Display product class reference if assigned
+                        if item.product_class_reference:
+                            with SessionLocal() as session:
+                                sortiment = (
+                                    session.query(SortimentDB)
+                                    .filter(SortimentDB.id == item.product_class_reference)
+                                    .first()
+                                )
+                                if sortiment:
+                                    st.info(f"🏷️ Product Class: **{sortiment.name}**")
+                        
                         col_save, col_delete = st.columns(2)
                         with col_save:
                             if st.form_submit_button("Save Product"):
