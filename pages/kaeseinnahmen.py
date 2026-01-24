@@ -90,6 +90,10 @@ if not classified_products.empty:
     )
     class_agg.columns = ["Product Class", "Total Amount", "Total Price", "Count"]
     
+    # Calculate max price, handling NaN case
+    max_price = class_agg["Total Price"].max()
+    max_price = max_price if pd.notna(max_price) and max_price > 0 else 1
+    
     class_column_config = {
         "Product Class": st.column_config.TextColumn("Product Class"),
         "Total Amount": st.column_config.NumberColumn("Total Amount", step=0.01),
@@ -97,7 +101,7 @@ if not classified_products.empty:
             "Total Price (€)",
             format="euro",
             min_value=0,
-            max_value=class_agg["Total Price"].max(),
+            max_value=max_price,
         ),
         "Count": st.column_config.NumberColumn("Count"),
     }
@@ -123,6 +127,10 @@ if aggregated:
 if not aggregated:
     filtered = filtered.style.apply(highlight_url, axis=1)
 
+# Calculate max price for the progress bar, handling NaN case
+max_filtered_price = filtered["price"].max() if len(filtered) > 0 else None
+max_filtered_price = max_filtered_price if pd.notna(max_filtered_price) and max_filtered_price > 0 else 1
+
 column_config = {
     "name": "Product Name",
     "amount": st.column_config.NumberColumn("Total Amount", step=0.01),
@@ -131,7 +139,7 @@ column_config = {
         format="euro",
         help="Visualize the price as a progress bar if available",
         min_value=0,
-        max_value=df["price"].max(),
+        max_value=max_filtered_price,
     ),
     "unit": "Unit",
     "receipt_number": "Receipt Number",
