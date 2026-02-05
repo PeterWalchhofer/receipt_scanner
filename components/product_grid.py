@@ -125,3 +125,20 @@ def product_grid_ui(receipt_id, is_bio, products=None, prefix="", show_price=Tru
                                         session.commit()
                                 st.success("Product deleted!")
                                 st.rerun()
+                    
+                    # Remove class button (outside form)
+                    if item.product_class_reference:
+                        if st.button(
+                            "Remove Product Class",
+                            key=f"remove_class_{item.id}",
+                            help="Remove product class assignment",
+                            type="secondary",
+                            use_container_width=True,
+                        ):
+                            with SessionLocal() as session:
+                                prod = session.query(ProductDB).get(item.id)
+                                if prod:
+                                    prod.product_class_reference = None
+                                    session.commit()
+                            st.success("Product class removed!")
+                            st.rerun()
