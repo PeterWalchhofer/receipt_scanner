@@ -129,7 +129,7 @@ def show_overview_statistics(df):
     # Section: Ausgaben
     st.header("Ausgaben")
     K = st.number_input(
-        "Number of top companies to show", min_value=1, max_value=20, value=5, step=1
+        "Number of top companies to show", min_value=1, max_value=60, value=5, step=1
     )
     expanse_companies = (
         df[~df["is_credit"]]
