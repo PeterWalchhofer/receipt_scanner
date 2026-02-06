@@ -60,24 +60,26 @@ st.markdown(f"**Gewinn:** {gewinn:.2f} €")
 
 # 2. Line Chart of Income vs Expanses for each month
 if "date" in df.columns:
-    df["month"] = df["date"].dt.to_period("M").astype(str)
+    df["month"] = df["date"].dt.to_period("M")
     monthly = (
         df.groupby(["month", "is_credit"])
         .agg({"total_gross_amount": "sum"})
         .reset_index()
     )
+    # Convert month back to timestamp for proper sorting in Altair
+    monthly["month"] = monthly["month"].dt.to_timestamp()
     monthly["Type"] = monthly["is_credit"].map({True: "Income", False: "Expanse"})
     line_chart = (
         alt.Chart(monthly)
         .mark_line(point=True)
         .encode(
-            x=alt.X("month:T", title="Month"),
+            x=alt.X("month:T", title="Month", axis=alt.Axis(format="%Y-%m")),
             y=alt.Y("total_gross_amount", title="Sum (€)"),
             color=alt.Color(
                 "Type",
                 scale=alt.Scale(domain=["Income", "Expanse"], range=["green", "red"]),
             ),
-            tooltip=["month", "Type", "total_gross_amount"],
+            tooltip=["month:T", "Type", "total_gross_amount"],
         )
         .properties(title="Monthly Income vs Expanse")
     )
