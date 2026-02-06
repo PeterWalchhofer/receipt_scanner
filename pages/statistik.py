@@ -34,7 +34,7 @@ bar_data = pd.DataFrame(
     {
         "Type": ["Income", "Expanse", "Gewinn"],
         "Amount": [income, expanse, gewinn],
-        "Color": ["green", "red", "darkgreen"],
+        "Color": ["green", "red", "blue"] if gewinn >= 0 else ["green", "red", "orange"],
     }
 )
 bar_chart = (
@@ -47,7 +47,7 @@ bar_chart = (
             "Type",
             scale=alt.Scale(
                 domain=["Income", "Expanse", "Gewinn"],
-                range=["green", "red", "darkgreen"],
+                range=["green", "red", "blue"] if gewinn >= 0 else ["green", "red", "orange"],
             ),
             legend=None,
         ),
@@ -56,7 +56,8 @@ bar_chart = (
     .properties(title="Income, Expanse & Gewinn")
 )
 st.altair_chart(bar_chart, use_container_width=True)
-st.markdown(f"**Gewinn:** {gewinn:.2f} €")
+gewinn_color = "green" if gewinn >= 0 else "red"
+st.markdown(f"**Gewinn:** :{gewinn_color}[{gewinn:.2f} €]")
 
 # 2. Line Chart of Income vs Expanses for each month
 if "date" in df.columns:
@@ -126,44 +127,88 @@ expanse_companies = (
     .sort_values(ascending=False)
     .head(int(K))
 )
-st.write(f"Top {int(K)} companies where expanses were made (by total net amount):")
-st.table(expanse_companies)
+expanse_df = expanse_companies.reset_index()
+expanse_df.columns = ["company_name", "total_net_amount"]
+chart_height = max(300, len(expanse_df) * 40)  # Dynamic height: 40px per company
+expanse_chart = (
+    alt.Chart(expanse_df)
+    .mark_bar()
+    .encode(
+        y=alt.Y("company_name", title="Company", sort="-x"),
+        x=alt.X("total_net_amount", title="Expenses (€)"),
+        tooltip=["company_name", "total_net_amount"],
+        color=alt.value("red"),
+    )
+    .properties(title=f"Top {int(K)} companies - Expenses", height=chart_height)
+    .configure_axis(labelLimit=0)
+)
+st.altair_chart(expanse_chart, use_container_width=True)
 
 # Section: Einnahmen
 st.header("Einnahmen")
 
-
 income_df = df[df["is_credit"]].copy()
 income_df["location"] = income_df.apply(get_location, axis=1)
+
+# Update get_location to include additional companies
+def get_location_extended(row):
+    location = get_location(row)
+    if location != "Other":
+        return location
+    company = row.get("company_name", "").lower() if isinstance(row.get("company_name"), str) else ""
+    if "salzburgmilch" in company:
+        return "SalzburgMilch GmbH"
+    if "viehhandel laßhofer" in company or "viehhandel lasshof" in company:
+        return "Viehhandel Laßhofer"
+    return "Other"
+
+income_df["location"] = income_df.apply(get_location_extended, axis=1)
 location_income = (
     income_df.groupby("location")["total_gross_amount"].sum().reset_index()
 )
+
+# Create horizontal bar chart with dynamic height
+location_chart_height = max(300, len(location_income) * 50)  # Dynamic height: 50px per location
 location_chart = (
     alt.Chart(location_income)
     .mark_bar()
     .encode(
-        x=alt.X("location", title="Sales Location"),
-        y=alt.Y("total_gross_amount", title="Income (€)"),
-        tooltip=["total_gross_amount"],
-        color=alt.Color("location", legend=None),
+        y=alt.Y("location", title="Sales Location", sort="-x"),
+        x=alt.X("total_gross_amount", title="Income (€)"),
+        tooltip=["location", "total_gross_amount"],
+        color=alt.value("green"),
     )
-    .properties(title="Einkommen nach Verkaufsort")
+    .properties(title="Einkommen nach Verkaufswert", height=location_chart_height)
+    .configure_axis(labelLimit=0)
 )
 st.altair_chart(location_chart, use_container_width=True)
 
-K2 = st.number_input(
-    "Number of top companies to show (income)",
-    min_value=1,
-    max_value=20,
-    value=5,
-    step=1,
-)
-income_companies = (
-    income_df[income_df["location"] == "Other"]
-    .groupby("company_name")["total_net_amount"]
-    .sum()
-    .sort_values(ascending=False)
-    .head(int(K2))
-)
-st.write(f"Top {int(K2)} companies where income were made (by total net amount):")
-st.table(income_companies)
+# Show "Other" incomes toggle
+show_other = st.checkbox("Show other income companies (>200€)")
+if show_other:
+    other_companies = (
+        income_df[income_df["location"] == "Other"]
+        .groupby("company_name")["total_net_amount"]
+        .sum()
+        .sort_values(ascending=False)
+    )
+    other_companies = other_companies[other_companies > 200]
+    if len(other_companies) > 0:
+        other_df = other_companies.reset_index()
+        other_df.columns = ["company_name", "total_net_amount"]
+        other_chart_height = max(300, len(other_df) * 40)  # Dynamic height: 40px per company
+        other_chart = (
+            alt.Chart(other_df)
+            .mark_bar()
+            .encode(
+                y=alt.Y("company_name", title="Company", sort="-x"),
+                x=alt.X("total_net_amount", title="Income (€)"),
+                tooltip=["company_name", "total_net_amount"],
+                color=alt.value("lightgreen"),
+            )
+            .properties(title="Other Income Companies (>200€)", height=other_chart_height)
+            .configure_axis(labelLimit=0)
+        )
+        st.altair_chart(other_chart, use_container_width=True)
+    else:
+        st.info("No other income companies with sums over 200€")
