@@ -42,3 +42,6 @@ class Receipt(BaseModel):
     products: list[Product] = Field(
         default=[], description="List of products in the receipt"
     )
+    tax_summary: Optional[dict] = Field(
+        default=None, description="Receipt-level tax summary mapping rate->sums"
+    )

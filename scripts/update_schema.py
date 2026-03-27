@@ -1,5 +1,12 @@
+"""DB schema migrations — run this before backfill_tax_summary.py.
+
+Server migration order:
+    1. python scripts/update_schema.py
+    2. python scripts/backfill_tax_summary.py --apply --backup receipts.db.bak
+
+Both scripts are idempotent and safe to re-run.
+"""
 import sqlite3
-# from repository.receipt_repository import ProductDB
 
 DB_PATH = "receipts.db"  # Change this if your DB file has a different name
 
@@ -94,6 +101,23 @@ def add_product_class_reference(db_path):
         conn.close()
 
 
+def add_tax_columns(db_path):
+    """Add receipt-level taxation column: tax_summary (JSON/text)."""
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    try:
+        cur.execute("ALTER TABLE receipts ADD COLUMN tax_summary TEXT;")
+        print("Added 'tax_summary' column to 'receipts' table.")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e).lower():
+            print("'tax_summary' column already exists.")
+        else:
+            print(f"Error adding tax_summary column: {e}")
+    finally:
+        conn.commit()
+        conn.close()
+
+
 if __name__ == "__main__":
 
     # Uncomment to run migrations
@@ -102,4 +126,4 @@ if __name__ == "__main__":
     create_sortiment_table(DB_PATH)
     create_regex_table(DB_PATH)
     add_product_class_reference(DB_PATH)
-    pass
+    add_tax_columns(DB_PATH)

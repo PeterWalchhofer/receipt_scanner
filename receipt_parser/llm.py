@@ -11,6 +11,7 @@ from PIL import Image, ImageOps
 from pillow_heif import register_heif_opener
 
 from models.receipt import Receipt
+from models.tax import TaxSummaryModel
 
 register_heif_opener()
 client = OpenAI()
@@ -39,7 +40,7 @@ def encode_pdf(pdf_path, scale_factor):
     return base64_images
 
 
-def     get_prompt_text(prompt_type, custom_prompt=None):
+def get_prompt_text(prompt_type, custom_prompt=None):
     if prompt_type == Prompt.CUSTOM:
         return custom_prompt
 
@@ -77,7 +78,7 @@ def get_prompt(
     ]
     print(get_prompt_text(prompt_type, custom_prompt))
     return {
-        "model": "chatgpt-4o-latest",
+        "model": "gpt-4.1",
         # "response_format": {"type": "json_object"},
         "input": [
             {
@@ -101,7 +102,8 @@ def get_prompt(
                 "The products should only be extracted if the following conditions are met: "
                 "1. The receipt is relevant for organic monitoring (is_bio is true, and is_credit is false). "
                 "2. The receipt lists sold cheese products (only if is_credit is true). Leave bio_category empty."
-                "Leave the products empty if the receipt is not relevant for organic monitoring or does not list sold cheese products.",
+                "Leave the products empty if the receipt is not relevant for organic monitoring or does not list sold cheese products."
+                "",
             },
             {
                 "role": "user",
@@ -114,6 +116,7 @@ def get_prompt(
                         {
                             "type": "input_image",
                             "image_url": f"data:image/jpeg;base64,{base64_image}",
+                            "detail": "high"
                         }
                         for base64_image in base64_images
                     ],
@@ -144,3 +147,67 @@ def query_openai(query_dict: dict):
         cache[hashed] = response_string
         Path("cache.json").write_text(json.dumps(cache))
         return response_string
+
+
+def extract_tax_summary(img_paths: list[str], receipt_data: dict) -> dict:
+    """Query the LLM with receipt images to extract a tax summary.
+
+    receipt_data should contain known fields (total_gross_amount, total_net_amount, vat_amount).
+    Returns a dict with 'has_mixed_taxes' and 'tax_summary', or empty dict on failure.
+    """
+    base64_images = [
+        encode_image(Image.open(p), 1)
+        for p in img_paths
+        if not p.endswith(".pdf")
+    ]
+    base64_images += [
+        img
+        for p in img_paths
+        if p.endswith(".pdf")
+        for img in encode_pdf(p, 1)
+    ]
+
+    known = {k: receipt_data[k] for k in ("total_gross_amount", "total_net_amount", "vat_amount") if k in receipt_data}
+    query = {
+        "model": "gpt-4.1",
+        "input": [
+            {"role": "system", "content": "Return only the requested structured tax summary. Do not add extra text."},
+            {"role": "user", "content": [
+                {"type": "input_text", "text": (
+                    "Extract ONLY the tax breakdown from this receipt. "
+                    "Return a list of entries, one per tax rate found (e.g. 10, 13, 20), each with rate, net_sum, tax_sum, gross_sum. "
+                    f"Known receipt totals for reference: {json.dumps(known)}. "
+                    "If you cannot determine the tax breakdown, return an empty entries list and set has_mixed_taxes to true."
+                )},
+                *[{"type": "input_image", "image_url": f"data:image/jpeg;base64,{img}"} for img in base64_images],
+            ]},
+        ],
+        "text_format": TaxSummaryModel,
+    }
+
+    result = query_openai(query)
+    try:
+        parsed = TaxSummaryModel.model_validate_json(result)
+        return {
+            "has_mixed_taxes": parsed.has_mixed_taxes,
+            "tax_summary": {str(e.rate): e.model_dump(exclude={"rate"}) for e in parsed.entries},
+        }
+    except Exception:
+        return {}
+
+
+def extract_receipt_data(img_paths: list[str], prompt_type: Prompt, custom_prompt: str | None, img_scale_factor=1) -> dict:
+    """Run primary extraction and if tax_summary missing, issue a focused follow-up query to extract tax_summary."""
+    primary = query_openai(get_prompt(img_paths, prompt_type, custom_prompt, img_scale_factor))
+    try:
+        parsed = json.loads(primary)
+    except Exception:
+        parsed = {}
+
+    if parsed.get("tax_summary") or not parsed.get("is_credit"):
+        return parsed
+
+    follow_parsed = extract_tax_summary(img_paths, parsed)
+    parsed["tax_summary"] = follow_parsed.get("tax_summary")
+    parsed["has_mixed_taxes"] = follow_parsed.get("has_mixed_taxes", parsed.get("has_mixed_taxes"))
+    return parsed

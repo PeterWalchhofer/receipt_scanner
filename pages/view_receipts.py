@@ -54,7 +54,7 @@ if receipts:
         f"/receipt_detail?id={quote_plus(str(r.id))}" for r in receipts
     ]  # Clickable links
     df["progress"] = df["total_gross_amount"]
-    df["source"] = [getattr(r, "source", "RECEIPT_SCANNER") for r in receipts]
+    df["source"] = [r.source or "RECEIPT_SCANNER" for r in receipts]
     df["products"] = [receipt_has_missing_products(r, products_count) for r in receipts]
 
     # --- Filter UI ---
@@ -157,7 +157,7 @@ if receipts:
             st.sidebar.markdown(f"**Gross:** {receipt.total_gross_amount}€")
             st.sidebar.markdown(f"**Net:** {receipt.total_net_amount}€")
             st.sidebar.markdown(
-                f"**Source:** {getattr(receipt, 'source', 'RECEIPT_SCANNER')}"
+                f"**Source:** {receipt.source or 'RECEIPT_SCANNER'}"
             )
 
             if receipt.file_paths:
@@ -244,6 +244,9 @@ if receipts:
             "total_gross_amount": "Brutto",
             "total_net_amount": "Netto",
             "vat_amount": "USt.",
+            "vat_10": "USt. 10%",
+            "vat_13": "USt. 13%",
+            "vat_20": "USt. 20%",
             "description": "Beschreibung",
             "comment": "Kommentar",
             "location": "Verkaufsort",
@@ -281,6 +284,10 @@ if receipts:
 
         # Aggregat einnahmen
         df_to_export["location"] = df_to_export.apply(get_location, axis=1)
+        for rate in [10, 13, 20]:
+            df_to_export[f"vat_{rate}"] = df_to_export["tax_summary"].apply(
+                lambda ts: (ts or {}).get(str(rate), {}).get("tax_sum", 0.0) if isinstance(ts, dict) else 0.0
+            )
         df_export = (
             df_to_export[list(col_rename_mapping.keys())]
             .rename(columns=col_rename_mapping)
@@ -292,7 +299,7 @@ if receipts:
         # Drop Einnahme column for export
         df_einnahmen = df_einnahmen.drop(columns="Einnahme")
         df_einnahmen_agg = df_einnahmen.groupby("Verkaufsort")[
-            ["USt.", "Netto", "Brutto"]
+            ["USt.", "USt. 10%", "USt. 13%", "USt. 20%", "Netto", "Brutto"]
         ].sum()
         df_ausgaben = df_ausgaben.drop(columns="Einnahme")
 

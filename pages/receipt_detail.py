@@ -6,10 +6,9 @@ from streamlit_pdf_viewer import pdf_viewer
 
 from components.input import get_receipt_inputs
 from components.product_grid import product_grid_ui
-from models.product import BioCategory, ProductUnit
 from models.receipt import Receipt
-from pages.upload import extract_data
-from receipt_parser.llm import Prompt
+from receipt_parser.llm import Prompt, extract_receipt_data
+from receipt_parser.taxation import has_mixed_taxes_from_summary, validate_tax_summary
 from repository.receipt_repository import (
     ProductDB,
     ReceiptDB,
@@ -82,9 +81,11 @@ if receipt_id:
                 except Exception:
                     st.warning(f"Could not create download button for: {file_path}")
     with col_2:
-        inputs = get_receipt_inputs(
-            receipt, receipt_id if receipt_id is not None else 0
+        expand_tax = bool(
+            has_mixed_taxes_from_summary(receipt.tax_summary or {})
+            or (receipt.vat_amount and not receipt.tax_summary)
         )
+        inputs = get_receipt_inputs(receipt, receipt_id, expand_tax=expand_tax)
         col_2_1, col_2_2 = st.columns(2)
         with col_2_1:
             if st.button("Save Changes", key=f"save_{receipt_id}"):
@@ -103,6 +104,15 @@ if receipt_id:
                     file_paths=receipt.file_paths,
                     source=inputs["source"],
                 )
+                # Attach tax fields if present (credit notes)
+                tax_data = inputs["tax_summary_data"]
+                if tax_data:
+                    updated_receipt.tax_summary = {str(k): v for k, v in tax_data.items()}
+                # validate tax sums if present
+                if inputs["is_credit"]:
+                    val = validate_tax_summary(updated_receipt.vat_amount, updated_receipt.tax_summary or {})
+                    if not val.ok:
+                        st.warning(f"VAT mismatch: receipt.vat_amount={updated_receipt.vat_amount} vs tax_summary total={val.vat_total} (diff={val.diff})")
                 receipt_repo.update_receipt(receipt_id, updated_receipt)
                 st.success("Changes saved successfully!")
                 st.rerun()
@@ -115,7 +125,7 @@ if receipt_id:
 st.markdown("---")
 st.subheader("Products")
 # Only show product UI for relevant receipts
-show_products = receipt.should_have_products()
+show_products = receipt_id and receipt and receipt.should_have_products()
 if not show_products:
     st.warning(
         "Produkt nur für Bioausgaben und Kaseinnahmen. Drücke Rechnung speichern, falls du die Angabe aktualisiert hast."
@@ -136,11 +146,11 @@ if show_products:
         if st.button("Extract Products"):
             scale_factor = 2 if high_res else 1
             extracted_data = (
-                extract_data(
+                extract_receipt_data(
                     receipt.file_paths, Prompt.PRODUCTS_ONLY, None, scale_factor
                 )
                 if not custom_prompt
-                else extract_data(
+                else extract_receipt_data(
                     receipt.file_paths, Prompt.CUSTOM, custom_prompt, scale_factor
                 )
             )

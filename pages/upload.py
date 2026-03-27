@@ -1,8 +1,6 @@
-import json
 import os
 import random
 from datetime import datetime
-from enum import Enum
 from pathlib import Path
 
 import streamlit as st
@@ -13,7 +11,8 @@ from components.input import get_receipt_inputs
 from components.product_db_ops import get_products_for_receipt
 from components.product_grid import product_grid_ui
 from models.receipt import Receipt, ReceiptSource
-from receipt_parser.llm import Prompt, get_prompt, query_openai
+from receipt_parser.llm import Prompt, extract_receipt_data
+from receipt_parser.taxation import build_receipt_tax_summary, validate_tax_summary
 from repository.receipt_repository import (
     ProductDB,
     ReceiptDB,
@@ -60,16 +59,7 @@ def extract_data_mock(file_paths, prompt_type, custom_prompt=None):
     }
 
 
-def extract_data(file_paths, prompt_type, custom_prompt=None, img_scale_factor=1):
-    response = query_openai(
-        get_prompt(file_paths, prompt_type, custom_prompt, img_scale_factor)
-    )
-    try:
-        json_dict = json.loads(response)
-    except json.JSONDecodeError:
-        print("Failed to decode JSON response", response)
-        return {}
-    return json_dict
+
 
 
 receipt_repo = ReceiptRepository()
@@ -140,7 +130,7 @@ if st.session_state.file_paths:
 
 high_res = st.toggle("High Resolution", value=False, key="high_res")
 if st.session_state.file_paths and st.button("Extract Receipt Data"):
-    extracted_data = extract_data(
+    extracted_data = extract_receipt_data(
         st.session_state.file_paths, Prompt(receipt_type), custom_prompt, 2 if high_res else 1
     )
     receipt = Receipt(**extracted_data)  # Save the image path with the extracted data
@@ -164,6 +154,7 @@ with col_2:
                 is_credit=st.session_state.extracted_data.is_credit,
                 file_paths=st.session_state.file_paths,
                 source=ReceiptSource.RECEIPT_SCANNER.value,
+                tax_summary=st.session_state.extracted_data.tax_summary,
             )
         )
         allow_products_unsaved = (
@@ -182,9 +173,9 @@ with col_2:
             updated_receipt = ReceiptDB(
                 receipt_number=inputs["receipt_number"],
                 date=inputs["receipt_date"],
-                total_gross_amount=(inputs["total_gross_amount"]),
-                total_net_amount=(inputs["total_net_amount"]),
-                vat_amount=(inputs["vat_amount"]),
+                total_gross_amount=float(inputs["total_gross_amount"]),
+                total_net_amount=float(inputs["total_net_amount"]),
+                vat_amount=float(inputs["vat_amount"]),
                 company_name=inputs["company_name"],
                 description=inputs["description"],
                 is_credit=inputs["is_credit"],
@@ -193,6 +184,21 @@ with col_2:
                 is_bio=inputs["is_bio"],
                 source=inputs["source"],
             )
+            if inputs["is_credit"]:
+                # Prefer user-edited tax breakdown; fall back to deterministic
+                tax_data = inputs["tax_summary_data"]
+                if tax_data and any(v["tax_sum"] != 0.0 for v in tax_data.values()):
+                    updated_receipt.tax_summary = tax_data
+                else:
+                    rs = build_receipt_tax_summary({
+                        "total_gross_amount": updated_receipt.total_gross_amount,
+                        "total_net_amount": updated_receipt.total_net_amount,
+                        "vat_amount": updated_receipt.vat_amount,
+                    })
+                    updated_receipt.tax_summary = rs["tax_summary"]
+                val = validate_tax_summary(updated_receipt.vat_amount, updated_receipt.tax_summary or {})
+                if not val.ok:
+                    st.warning(f"VAT mismatch: receipt.vat_amount={updated_receipt.vat_amount} vs tax_summary total={val.vat_total} (diff={val.diff})")
             # Save updated receipt to the database
             created_receipt = receipt_repo.create_receipt(updated_receipt)
             st.session_state.created_receipt = created_receipt

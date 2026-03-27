@@ -51,6 +51,7 @@ class ReceiptDB(Base):
     comment: str | None = Column(String)
     is_credit: bool = Column(Boolean, default=False)
     is_bio: bool = Column(Boolean, default=False)
+    tax_summary: dict | None = Column(JSON, nullable=True)
     file_paths: list[str] = Column(JSON)  # Store multiple image paths
     source: str = Column(String, default=ReceiptSource.RECEIPT_SCANNER.value)
 
