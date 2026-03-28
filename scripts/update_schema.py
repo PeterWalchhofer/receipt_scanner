@@ -123,7 +123,7 @@ if __name__ == "__main__":
     # Uncomment to run migrations
     # add_source_column(DB_PATH)
     # add_products_table(DB_PATH)
-    create_sortiment_table(DB_PATH)
-    create_regex_table(DB_PATH)
-    add_product_class_reference(DB_PATH)
+    # create_sortiment_table(DB_PATH)
+    # create_regex_table(DB_PATH)
+    # add_product_class_reference(DB_PATH)
     add_tax_columns(DB_PATH)
