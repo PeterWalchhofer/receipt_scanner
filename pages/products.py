@@ -10,15 +10,17 @@ from urllib.parse import quote_plus
 import pandas as pd
 import streamlit as st
 
-from repository.receipt_repository import ProductDB, ReceiptDB, SessionLocal
+from repository.receipt_repository import ProductDB, ReceiptDB, SortimentDB, SessionLocal
 
 st.title("🛍️ All Products")
 st.write("Browse and search all products with flexible filtering.")
 
-# Fetch all products with their receipt info
+# Fetch all products with their receipt and product class info
 with SessionLocal() as session:
-    query = session.query(ProductDB, ReceiptDB).join(
+    query = session.query(ProductDB, ReceiptDB, SortimentDB).join(
         ReceiptDB, ProductDB.receipt_id == ReceiptDB.id
+    ).outerjoin(
+        SortimentDB, ProductDB.product_class_reference == SortimentDB.id
     )
     all_rows = query.all()
 
@@ -27,7 +29,10 @@ with SessionLocal() as session:
         st.stop()
 
     data = []
-    for prod, rec in all_rows:
+    for prod, rec, sortiment in all_rows:
+        product_class_name = sortiment.name if sortiment else None
+        has_class = product_class_name is not None
+        
         data.append(
             {
                 "id": prod.id,
@@ -42,7 +47,8 @@ with SessionLocal() as session:
                     if hasattr(prod.bio_category, "value")
                     else prod.bio_category
                 ),
-                "product_class": None,  # Will populate below
+                "product_class": product_class_name,
+                "has_product_class": has_class,
                 "company_name": rec.company_name,
                 "is_credit": rec.is_credit,
                 "date": rec.date,
@@ -96,6 +102,10 @@ credit_filter = st.sidebar.selectbox("Receipt Type", options=credit_options)
 companies = [None] + sorted(df["company_name"].dropna().unique().tolist())
 selected_company = st.sidebar.selectbox("Company", options=companies)
 
+# Product class reference filter
+class_ref_options = ["All", "Has Product Class", "Missing Product Class"]
+class_ref_filter = st.sidebar.selectbox("Product Class Reference", options=class_ref_options)
+
 # Apply filters
 filtered = df.copy()
 
@@ -128,6 +138,11 @@ elif credit_filter == "Non-Credit Only":
 if selected_company:
     filtered = filtered[filtered["company_name"] == selected_company]
 
+if class_ref_filter == "Has Product Class":
+    filtered = filtered[filtered["has_product_class"] == True]
+elif class_ref_filter == "Missing Product Class":
+    filtered = filtered[filtered["has_product_class"] == False]
+
 # Display results info
 st.sidebar.divider()
 st.sidebar.metric("Total Products", len(df))
@@ -144,6 +159,8 @@ else:
         "price": st.column_config.NumberColumn("Price (€)", format="€%.2f"),
         "is_bio": st.column_config.CheckboxColumn("Bio", width="small"),
         "bio_category": st.column_config.TextColumn("Bio Category", width="small"),
+        "product_class": st.column_config.TextColumn("Product Class", width="medium"),
+        "has_product_class": st.column_config.CheckboxColumn("Has Class Ref", width="small"),
         "company_name": st.column_config.TextColumn("Company", width="small"),
         "is_credit": st.column_config.CheckboxColumn("Credit", width="small"),
         "date": st.column_config.TextColumn("Date", width="small"),
@@ -162,6 +179,8 @@ else:
             "price",
             "is_bio",
             "bio_category",
+            "product_class",
+            "has_product_class",
             "company_name",
             "is_credit",
             "date",
